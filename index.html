@@ -2,47 +2,53 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tracker de Caída Libre / Plano Inclinado 1D</title>
   <style>
     :root { --bg: #121212; --panel: #1e1e1e; --accent: #00e676; --text: #e0e0e0; }
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
       background-color: var(--bg); color: var(--text);
-      margin: 0; padding: 20px;
+      margin: 0; padding: 10px;
       display: flex; flex-direction: column; gap: 15px;
     }
-    h2 { margin: 0; color: var(--accent); font-size: 16px; margin-bottom: 10px; }
+    h2 { margin: 0; color: var(--accent); font-size: 15px; margin-bottom: 8px; }
     
     .toolbar {
-      display: flex; gap: 20px; align-items: center;
-      background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #333;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      background: var(--panel); padding: 12px; border-radius: 8px; border: 1px solid #333;
     }
     
     .main-grid {
-      display: grid; grid-template-columns: auto 1fr; gap: 20px;
+      display: flex; flex-direction: column; gap: 15px;
+    }
+    @media(min-width: 900px) {
+      .main-grid { display: grid; grid-template-columns: auto 1fr; }
     }
     
     .canvas-container {
       background: #000; border-radius: 8px; border: 1px solid #333;
-      position: relative; display: inline-block;
+      position: relative; display: flex; flex-direction: column; align-items: center;
+      overflow: hidden;
     }
-    canvas { display: block; cursor: crosshair; }
+    canvas { display: block; max-width: 100%; height: auto; cursor: crosshair; }
     
     .side-panel {
       background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #333;
-      display: flex; flex-direction: column; gap: 15px; max-height: 85vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 15px;
     }
 
     button {
       background: #2a2a2a; color: #fff; border: 1px solid #444;
       padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;
+      font-size: 13px;
     }
     button:hover { background: #3a3a3a; }
     button.active { background: var(--accent); color: #000; border-color: var(--accent); }
     
-    .controls-group { display: flex; gap: 5px; }
+    .controls-group { display: flex; gap: 5px; flex-wrap: wrap; }
     
-    .info-box { font-family: monospace; font-size: 13px; background: #111; padding: 10px; border-radius: 4px; line-height: 1.5; }
+    .info-box { font-family: monospace; font-size: 12px; background: #111; padding: 10px; border-radius: 4px; line-height: 1.5; word-break: break-all; }
     .info-box span { color: var(--accent); }
     
     .fps-input {
@@ -50,10 +56,20 @@
       padding: 3px 6px; border-radius: 3px; font-family: monospace; width: 70px;
     }
 
-    table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 12px; text-align: center; }
-    th, td { border: 1px solid #333; padding: 5px; }
+    .table-container { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; text-align: center; }
+    th, td { border: 1px solid #333; padding: 5px; white-space: nowrap; }
     th { background: #2a2a2a; color: #aaa; }
     td { color: #81d4fa; }
+
+    /* Fix crucial para Firefox Android: Elemento multimedia activo pero oculto visualmente */
+    #hiddenVideo {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1px; height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -75,22 +91,22 @@
     <div class="canvas-container">
       <canvas id="videoCanvas" width="640" height="360"></canvas>
       
-      <div class="toolbar" style="margin-top: 10px; justify-content: center; padding: 10px;">
+      <div class="toolbar" style="margin: 10px; width: 95%; justify-content: center; padding: 8px; box-sizing: border-box;">
         <div class="controls-group">
           <button id="btnStop" title="Rebobinar a 0">⬛ STOP</button>
           <button id="btnPrev10" title="Retroceder 10 cuadros">⏪ -10</button>
           <button id="btnPrev1" title="Retroceder 1 cuadro">◀ -1</button>
-          <button id="btnPlayPause" style="width: 80px;">▶ PLAY</button>
+          <button id="btnPlayPause" style="width: 75px;">▶ PLAY</button>
           <button id="btnNext1" title="Avanzar 1 cuadro">+1 ▶</button>
-          <button id="btnNext10" title="Avanzar 10 cuadros">+10 ⏩</button>
+          <button id="btnNext10" title="Avanzar 1 cuadros">+10 ⏩</button>
         </div>
       </div>
     </div>
 
     <div class="side-panel">
-      <h2>Configuración de Tiempo (Modificable)</h2>
+      <h2>Configuración de Tiempo</h2>
       <div class="info-box">
-        <label>FPS Reproducción (Avance): <input type="number" step="0.0001" id="inFpsPlay" value="30" class="fps-input"/></label><br>
+        <label>FPS Reproducción: <input type="number" step="0.0001" id="inFpsPlay" value="30" class="fps-input"/></label><br><br>
         <label>FPS Captura (Cálculos): <input type="number" step="0.0001" id="inFpsReal" value="30" class="fps-input"/></label>
       </div>
 
@@ -101,23 +117,26 @@
       <div class="info-box" id="calibInfo">Sin calibrar.</div>
 
       <h2>Tabla Cinemática (1D)</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Frame</th>
-            <th>t (ms)</th>
-            <th>Pos (m)</th>
-            <th>Vel (m/s)</th>
-            <th>Acel (m/s²)</th>
-            <th>Error %</th>
-          </tr>
-        </thead>
-        <tbody id="dataTable"></tbody>
-      </table>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Frame</th>
+              <th>t (ms)</th>
+              <th>Pos (m)</th>
+              <th>Vel (m/s)</th>
+              <th>Acel (m/s²)</th>
+              <th>Error %</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <video id="hiddenVideo" playsinline style="display:none;"></video>
+  <!-- Video visible por el motor pero imperceptible visualmente -->
+  <video id="hiddenVideo" playsinline muted autoplay></video>
 
   <script type="module">
     import mediaInfoFactory from 'https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.3/+esm';
@@ -126,7 +145,7 @@
       videoInput: document.getElementById('videoInput'),
       video: document.getElementById('hiddenVideo'),
       canvas: document.getElementById('videoCanvas'),
-      ctx: document.getElementById('videoCanvas').getContext('2d'),
+      ctx: document.getElementById('videoCanvas').getContext('2d', { alpha: false }),
       status: document.getElementById('status'),
       videoInfo: document.getElementById('videoInfo'),
       calibInfo: document.getElementById('calibInfo'),
@@ -148,7 +167,7 @@
       calibPoints: [],
       pxPerMeter: null,
       trackingData: [],
-      primaryAxis: 'y' // Se detectará automáticamente según el movimiento
+      primaryAxis: 'y'
     };
 
     els.inFpsPlay.addEventListener('change', (e) => {
@@ -211,8 +230,8 @@
       state.fpsReal = fReal;
       
       state.totalFrames = Math.floor(els.video.duration * state.fpsPlay);
-      els.canvas.width = els.video.videoWidth;
-      els.canvas.height = els.video.videoHeight;
+      els.canvas.width = els.video.videoWidth || 640;
+      els.canvas.height = els.video.videoHeight || 360;
       els.status.textContent = 'Listo.';
       
       seekToFrame(0);
@@ -234,11 +253,19 @@
     document.getElementById('btnNext1').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame + 1); };
     document.getElementById('btnNext10').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame + 10); };
     
-    els.btnPlay.onclick = () => {
+    els.btnPlay.onclick = async () => {
       if (els.video.paused) {
-        els.video.play(); state.isPlaying = true; els.btnPlay.textContent = '⏸ PAUSE';
+        try {
+          await els.video.play();
+          state.isPlaying = true; 
+          els.btnPlay.textContent = '⏸ PAUSE';
+        } catch(err) {
+          console.error("Error al reproducir en Firefox Android:", err);
+        }
       } else {
-        els.video.pause(); state.isPlaying = false; els.btnPlay.textContent = '▶ PLAY';
+        els.video.pause(); 
+        state.isPlaying = false; 
+        els.btnPlay.textContent = '▶ PLAY';
       }
     };
 
@@ -262,7 +289,8 @@
       els.btnModeTrack.classList.toggle('active', mode === 'TRACK');
     }
 
-    els.canvas.onmousedown = (e) => {
+    // Soporte táctil y de mouse unificado
+    els.canvas.addEventListener('pointerdown', (e) => {
       const rect = els.canvas.getBoundingClientRect();
       const scaleX = els.canvas.width / rect.width;
       const scaleY = els.canvas.height / rect.height;
@@ -282,10 +310,10 @@
           let angleDeg = Math.abs(angleRad * 180 / Math.PI).toFixed(1);
 
           setTimeout(() => {
-            const realDist = prompt(`Distancia en píxeles: ${pxDist.toFixed(1)}\nÁngulo c/ vertical: ${angleDeg}°\n\nIngresa la distancia real en METROS:`, "1.0");
+            const realDist = prompt(`Distancia en píxeles: ${pxDist.toFixed(1)}\nÁngulo: ${angleDeg}°\n\nIngresa la distancia real en METROS:`, "1.0");
             if (realDist && !isNaN(realDist)) {
               state.pxPerMeter = pxDist / parseFloat(realDist);
-              els.calibInfo.innerHTML = `Factor: <span>${state.pxPerMeter.toFixed(2)} px/m</span> <br>Ángulo caída: <span>${angleDeg}°</span>`;
+              els.calibInfo.innerHTML = `Factor: <span>${state.pxPerMeter.toFixed(2)} px/m</span> <br>Ángulo: <span>${angleDeg}°</span>`;
               setMode('TRACK'); 
             } else {
               state.calibPoints = [];
@@ -297,13 +325,12 @@
         addTrackingPoint(x, y);
         seekToFrame(state.currentFrame + 1); 
       }
-    };
+    });
 
     function addTrackingPoint(x, y) {
       state.trackingData.push({ frame: state.currentFrame, x, y, pos: 0, v: null, a: null, error: null, time_ms: 0 });
       state.trackingData.sort((A, B) => A.frame - B.frame);
       
-      // Detectar automáticamente si el movimiento principal es horizontal o vertical según el span total
       if (state.trackingData.length > 1) {
         const p0 = state.trackingData[0];
         const pLast = state.trackingData[state.trackingData.length - 1];
@@ -324,12 +351,9 @@
       
       for (let i = 0; i < n; i++) {
         let pt = state.trackingData[i];
-        
-        // Tiempo transcurrido en segundos desde el origen
         const t_sec = (pt.frame - p0.frame) / state.fpsReal; 
         pt.time_ms = t_sec * 1000;
         
-        // Distancia 1D seleccionando el eje con mayor cambio (vertical u horizontal para plano inclinado)
         const deltaPx = state.primaryAxis === 'x' ? Math.abs(pt.x - p0.x) : Math.abs(pt.y - p0.y);
         pt.pos = state.pxPerMeter ? (deltaPx / state.pxPerMeter) : 0;
         
@@ -342,11 +366,9 @@
           const dt = (pt.time_ms - pPrev.time_ms) / 1000;
           
           if (dt > 0) {
-            // Velocidad incremental simple entre el punto anterior y el actual
             pt.v = (pt.pos - pPrev.pos) / dt;
           }
 
-          // Aceleración analítica directa desde el origen (2 * pos / t^2)
           if (t_sec > 0) {
             pt.a = (2 * pt.pos) / (t_sec * t_sec);
             pt.error = Math.abs((pt.a - g_ref) / g_ref) * 100;
