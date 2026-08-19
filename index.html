@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tracker de Caída Libre / Plano Inclinado 1D</title>
+  <style>
+    :root { --bg: #121212; --panel: #1e1e1e; --accent: #00e676; --text: #e0e0e0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background-color: var(--bg); color: var(--text);
+      margin: 0; padding: 20px;
+      display: flex; flex-direction: column; gap: 15px;
+    }
+    h2 { margin: 0; color: var(--accent); font-size: 16px; margin-bottom: 10px; }
+    
+    .toolbar {
+      display: flex; gap: 20px; align-items: center;
+      background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #333;
+    }
+    
+    .main-grid {
+      display: grid; grid-template-columns: auto 1fr; gap: 20px;
+    }
+    
+    .canvas-container {
+      background: #000; border-radius: 8px; border: 1px solid #333;
+      position: relative; display: inline-block;
+    }
+    canvas { display: block; cursor: crosshair; }
+    
+    .side-panel {
+      background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #333;
+      display: flex; flex-direction: column; gap: 15px; max-height: 85vh; overflow-y: auto;
+    }
+
+    button {
+      background: #2a2a2a; color: #fff; border: 1px solid #444;
+      padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;
+    }
+    button:hover { background: #3a3a3a; }
+    button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    
+    .controls-group { display: flex; gap: 5px; }
+    
+    .info-box { font-family: monospace; font-size: 13px; background: #111; padding: 10px; border-radius: 4px; line-height: 1.5; }
+    .info-box span { color: var(--accent); }
+    
+    .fps-input {
+      background: #2a2a2a; color: #81d4fa; border: 1px solid #444; 
+      padding: 3px 6px; border-radius: 3px; font-family: monospace; width: 70px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 12px; text-align: center; }
+    th, td { border: 1px solid #333; padding: 5px; }
+    th { background: #2a2a2a; color: #aaa; }
+    td { color: #81d4fa; }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <input type="file" id="videoInput" accept="video/*" />
+    <div id="status">Esperando video...</div>
+    
+    <div style="flex-grow: 1;"></div>
+    
+    <div class="controls-group">
+      <button id="btnModeCalibrate">1. Calibrar Regla</button>
+      <button id="btnModeTrack">2. Seguir Objeto</button>
+      <button id="btnClearTrack">Limpiar Datos</button>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div class="canvas-container">
+      <canvas id="videoCanvas" width="640" height="360"></canvas>
+      
+      <div class="toolbar" style="margin-top: 10px; justify-content: center; padding: 10px;">
+        <div class="controls-group">
+          <button id="btnStop" title="Rebobinar a 0">⬛ STOP</button>
+          <button id="btnPrev10" title="Retroceder 10 cuadros">⏪ -10</button>
+          <button id="btnPrev1" title="Retroceder 1 cuadro">◀ -1</button>
+          <button id="btnPlayPause" style="width: 80px;">▶ PLAY</button>
+          <button id="btnNext1" title="Avanzar 1 cuadro">+1 ▶</button>
+          <button id="btnNext10" title="Avanzar 10 cuadros">+10 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <h2>Configuración de Tiempo (Modificable)</h2>
+      <div class="info-box">
+        <label>FPS Reproducción (Avance): <input type="number" step="0.0001" id="inFpsPlay" value="30" class="fps-input"/></label><br>
+        <label>FPS Captura (Cálculos): <input type="number" step="0.0001" id="inFpsReal" value="30" class="fps-input"/></label>
+      </div>
+
+      <h2>Información del Cuadro</h2>
+      <div class="info-box" id="videoInfo">Cargando metadatos...</div>
+
+      <h2>Calibración Espacial</h2>
+      <div class="info-box" id="calibInfo">Sin calibrar.</div>
+
+      <h2>Tabla Cinemática (1D)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Frame</th>
+            <th>t (ms)</th>
+            <th>Pos (m)</th>
+            <th>Vel (m/s)</th>
+            <th>Acel (m/s²)</th>
+            <th>Error %</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <video id="hiddenVideo" playsinline style="display:none;"></video>
+
+  <script type="module">
+    import mediaInfoFactory from 'https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.3/+esm';
+
+    const els = {
+      videoInput: document.getElementById('videoInput'),
+      video: document.getElementById('hiddenVideo'),
+      canvas: document.getElementById('videoCanvas'),
+      ctx: document.getElementById('videoCanvas').getContext('2d'),
+      status: document.getElementById('status'),
+      videoInfo: document.getElementById('videoInfo'),
+      calibInfo: document.getElementById('calibInfo'),
+      dataTable: document.getElementById('dataTable'),
+      btnPlay: document.getElementById('btnPlayPause'),
+      btnModeCalibrate: document.getElementById('btnModeCalibrate'),
+      btnModeTrack: document.getElementById('btnModeTrack'),
+      inFpsPlay: document.getElementById('inFpsPlay'),
+      inFpsReal: document.getElementById('inFpsReal')
+    };
+
+    let state = {
+      fpsPlay: 30, 
+      fpsReal: 30, 
+      totalFrames: 0,
+      currentFrame: 0,
+      isPlaying: false,
+      mode: 'IDLE',
+      calibPoints: [],
+      pxPerMeter: null,
+      trackingData: [],
+      primaryAxis: 'y' // Se detectará automáticamente según el movimiento
+    };
+
+    els.inFpsPlay.addEventListener('change', (e) => {
+      state.fpsPlay = parseFloat(e.target.value) || 30;
+      state.totalFrames = Math.floor(els.video.duration * state.fpsPlay);
+      renderFrameInfo();
+    });
+    
+    els.inFpsReal.addEventListener('change', (e) => {
+      state.fpsReal = parseFloat(e.target.value) || 30;
+      recalcularFisica(); 
+    });
+
+    els.videoInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      els.status.textContent = 'Procesando metadatos WASM...';
+      state = { ...state, calibPoints: [], pxPerMeter: null, trackingData: [], currentFrame: 0, isPlaying: false };
+      els.btnPlay.textContent = '▶ PLAY';
+      updateTable();
+
+      els.video.src = URL.createObjectURL(file);
+      els.video.load();
+
+      const mediainfo = await mediaInfoFactory({
+        format: 'object',
+        locateFile: (path) => path.endsWith('.wasm') ? 'MediaInfoModule.wasm' : path
+      });
+
+      const getSize = () => file.size;
+      const readChunk = (chunkSize, offset) => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(new Uint8Array(e.target.result));
+        reader.readAsArrayBuffer(file.slice(offset, offset + chunkSize));
+      });
+
+      const miData = await mediainfo.analyzeData(getSize, readChunk);
+      mediainfo.close();
+
+      await new Promise(r => {
+        if (els.video.readyState >= 2) r();
+        else els.video.addEventListener('loadeddata', r, {once: true});
+      });
+
+      let fPlay = 30;
+      let fReal = 30;
+
+      if (miData.media && miData.media.track) {
+        const vTrack = miData.media.track.find(t => t['@type'] === 'Video');
+        if (vTrack) {
+          fPlay = parseFloat(vTrack.FrameRate) || 30;
+          fReal = parseFloat(vTrack.FrameRate_Real || vTrack.FrameRate_Original || vTrack.RealFrameRate) || fPlay;
+        }
+      }
+      
+      els.inFpsPlay.value = fPlay;
+      els.inFpsReal.value = fReal;
+      state.fpsPlay = fPlay;
+      state.fpsReal = fReal;
+      
+      state.totalFrames = Math.floor(els.video.duration * state.fpsPlay);
+      els.canvas.width = els.video.videoWidth;
+      els.canvas.height = els.video.videoHeight;
+      els.status.textContent = 'Listo.';
+      
+      seekToFrame(0);
+      renderFrameInfo();
+      drawLoop();
+    });
+
+    const seekToFrame = (frameTarget) => {
+      if (frameTarget < 0) frameTarget = 0;
+      if (frameTarget > state.totalFrames) frameTarget = state.totalFrames;
+      state.currentFrame = frameTarget;
+      els.video.currentTime = state.currentFrame / state.fpsPlay;
+      renderFrameInfo();
+    };
+
+    document.getElementById('btnStop').onclick = () => { els.video.pause(); state.isPlaying = false; els.btnPlay.textContent = '▶ PLAY'; seekToFrame(0); };
+    document.getElementById('btnPrev10').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame - 10); };
+    document.getElementById('btnPrev1').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame - 1); };
+    document.getElementById('btnNext1').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame + 1); };
+    document.getElementById('btnNext10').onclick = () => { els.video.pause(); seekToFrame(state.currentFrame + 10); };
+    
+    els.btnPlay.onclick = () => {
+      if (els.video.paused) {
+        els.video.play(); state.isPlaying = true; els.btnPlay.textContent = '⏸ PAUSE';
+      } else {
+        els.video.pause(); state.isPlaying = false; els.btnPlay.textContent = '▶ PLAY';
+      }
+    };
+
+    els.video.ontimeupdate = () => {
+      if (state.isPlaying) {
+        state.currentFrame = Math.round(els.video.currentTime * state.fpsPlay);
+        renderFrameInfo();
+      }
+    };
+
+    els.btnModeCalibrate.onclick = () => setMode('CALIBRATE');
+    els.btnModeTrack.onclick = () => {
+      if (!state.pxPerMeter) return alert("Por favor calibra la distancia real primero (Botón 1).");
+      setMode('TRACK');
+    };
+    document.getElementById('btnClearTrack').onclick = () => { state.trackingData = []; updateTable(); };
+
+    function setMode(mode) {
+      state.mode = mode;
+      els.btnModeCalibrate.classList.toggle('active', mode === 'CALIBRATE');
+      els.btnModeTrack.classList.toggle('active', mode === 'TRACK');
+    }
+
+    els.canvas.onmousedown = (e) => {
+      const rect = els.canvas.getBoundingClientRect();
+      const scaleX = els.canvas.width / rect.width;
+      const scaleY = els.canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      if (state.mode === 'CALIBRATE') {
+        if (state.calibPoints.length >= 2) state.calibPoints = [];
+        state.calibPoints.push({x, y});
+        
+        if (state.calibPoints.length === 2) {
+          const dx = state.calibPoints[1].x - state.calibPoints[0].x;
+          const dy = state.calibPoints[1].y - state.calibPoints[0].y;
+          const pxDist = Math.hypot(dx, dy);
+          
+          let angleRad = Math.atan2(dx, dy);
+          let angleDeg = Math.abs(angleRad * 180 / Math.PI).toFixed(1);
+
+          setTimeout(() => {
+            const realDist = prompt(`Distancia en píxeles: ${pxDist.toFixed(1)}\nÁngulo c/ vertical: ${angleDeg}°\n\nIngresa la distancia real en METROS:`, "1.0");
+            if (realDist && !isNaN(realDist)) {
+              state.pxPerMeter = pxDist / parseFloat(realDist);
+              els.calibInfo.innerHTML = `Factor: <span>${state.pxPerMeter.toFixed(2)} px/m</span> <br>Ángulo caída: <span>${angleDeg}°</span>`;
+              setMode('TRACK'); 
+            } else {
+              state.calibPoints = [];
+            }
+          }, 50);
+        }
+      } 
+      else if (state.mode === 'TRACK') {
+        addTrackingPoint(x, y);
+        seekToFrame(state.currentFrame + 1); 
+      }
+    };
+
+    function addTrackingPoint(x, y) {
+      state.trackingData.push({ frame: state.currentFrame, x, y, pos: 0, v: null, a: null, error: null, time_ms: 0 });
+      state.trackingData.sort((A, B) => A.frame - B.frame);
+      
+      // Detectar automáticamente si el movimiento principal es horizontal o vertical según el span total
+      if (state.trackingData.length > 1) {
+        const p0 = state.trackingData[0];
+        const pLast = state.trackingData[state.trackingData.length - 1];
+        const spanX = Math.abs(pLast.x - p0.x);
+        const spanY = Math.abs(pLast.y - p0.y);
+        state.primaryAxis = spanX > spanY ? 'x' : 'y';
+      }
+
+      recalcularFisica();
+    }
+
+    function recalcularFisica() {
+      const n = state.trackingData.length;
+      if (n === 0) return;
+
+      const p0 = state.trackingData[0];
+      const g_ref = 9.81;
+      
+      for (let i = 0; i < n; i++) {
+        let pt = state.trackingData[i];
+        
+        // Tiempo transcurrido en segundos desde el origen
+        const t_sec = (pt.frame - p0.frame) / state.fpsReal; 
+        pt.time_ms = t_sec * 1000;
+        
+        // Distancia 1D seleccionando el eje con mayor cambio (vertical u horizontal para plano inclinado)
+        const deltaPx = state.primaryAxis === 'x' ? Math.abs(pt.x - p0.x) : Math.abs(pt.y - p0.y);
+        pt.pos = state.pxPerMeter ? (deltaPx / state.pxPerMeter) : 0;
+        
+        if (i === 0) {
+          pt.v = 0;
+          pt.a = null;
+          pt.error = null;
+        } else {
+          const pPrev = state.trackingData[i - 1];
+          const dt = (pt.time_ms - pPrev.time_ms) / 1000;
+          
+          if (dt > 0) {
+            // Velocidad incremental simple entre el punto anterior y el actual
+            pt.v = (pt.pos - pPrev.pos) / dt;
+          }
+
+          // Aceleración analítica directa desde el origen (2 * pos / t^2)
+          if (t_sec > 0) {
+            pt.a = (2 * pt.pos) / (t_sec * t_sec);
+            pt.error = Math.abs((pt.a - g_ref) / g_ref) * 100;
+          } else {
+            pt.a = null;
+            pt.error = null;
+          }
+        }
+      }
+      updateTable();
+    }
+
+    function drawLoop() {
+      requestAnimationFrame(drawLoop);
+      if (els.video.readyState >= 2) {
+        els.ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
+        els.ctx.drawImage(els.video, 0, 0, els.canvas.width, els.canvas.height);
+      }
+
+      if (state.calibPoints.length > 0) {
+        els.ctx.strokeStyle = '#2196f3'; els.ctx.lineWidth = 3;
+        els.ctx.beginPath();
+        els.ctx.arc(state.calibPoints[0].x, state.calibPoints[0].y, 5, 0, Math.PI*2);
+        if (state.calibPoints[1]) {
+          els.ctx.lineTo(state.calibPoints[1].x, state.calibPoints[1].y);
+          els.ctx.arc(state.calibPoints[1].x, state.calibPoints[1].y, 5, 0, Math.PI*2);
+        }
+        els.ctx.stroke();
+      }
+
+      if (state.trackingData.length > 0) {
+        els.ctx.strokeStyle = '#00e676'; els.ctx.lineWidth = 2;
+        els.ctx.fillStyle = '#ff1744';
+        
+        els.ctx.beginPath();
+        state.trackingData.forEach((pt, i) => {
+          if (i === 0) els.ctx.moveTo(pt.x, pt.y);
+          else els.ctx.lineTo(pt.x, pt.y);
+        });
+        els.ctx.stroke();
+
+        state.trackingData.forEach(pt => {
+          els.ctx.beginPath();
+          els.ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2);
+          els.ctx.fill();
+        });
+      }
+    }
+
+    function renderFrameInfo() {
+      const tAct = (els.video.currentTime * 1000).toFixed(0);
+      const tTot = (els.video.duration * 1000).toFixed(0) || 0;
+      
+      els.videoInfo.innerHTML = `
+        Resolución: <span>${els.canvas.width || 0}x${els.canvas.height || 0}</span><br>
+        Cuadro: <span>${state.currentFrame} / ${state.totalFrames || 0}</span><br>
+        Tiempo Playback: <span>${tAct} ms / ${tTot} ms</span>
+      `;
+    }
+
+    function updateTable() {
+      els.dataTable.innerHTML = state.trackingData.map(d => `
+        <tr>
+          <td>${d.frame}</td>
+          <td>${d.time_ms.toFixed(1)}</td>
+          <td>${d.pos.toFixed(4)}</td>
+          <td>${d.v === null ? '-' : d.v.toFixed(3)}</td>
+          <td>${d.a === null ? '-' : d.a.toFixed(3)}</td>
+          <td>${d.error === null ? '-' : d.error.toFixed(1) + '%'}</td>
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
