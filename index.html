@@ -29,9 +29,20 @@
     .canvas-container {
       background: #000; border-radius: 8px; border: 1px solid #333;
       position: relative; display: flex; flex-direction: column; align-items: center;
-      overflow: hidden;
+      overflow: hidden; padding: 10px;
     }
     canvas { display: block; max-width: 100%; height: auto; cursor: crosshair; }
+    
+    /* Video visible requeridísimo para Firefox Android */
+    #visibleVideo {
+      width: 100%;
+      max-width: 320px;
+      height: auto;
+      border: 1px solid #444;
+      border-radius: 4px;
+      margin-top: 10px;
+      background: #000;
+    }
     
     .side-panel {
       background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #333;
@@ -61,15 +72,6 @@
     th, td { border: 1px solid #333; padding: 5px; white-space: nowrap; }
     th { background: #2a2a2a; color: #aaa; }
     td { color: #81d4fa; }
-
-    /* Fix crucial para Firefox Android: Elemento multimedia activo pero oculto visualmente */
-    #hiddenVideo {
-      position: absolute;
-      top: 0; left: 0;
-      width: 1px; height: 1px;
-      opacity: 0.01;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
@@ -91,7 +93,10 @@
     <div class="canvas-container">
       <canvas id="videoCanvas" width="640" height="360"></canvas>
       
-      <div class="toolbar" style="margin: 10px; width: 95%; justify-content: center; padding: 8px; box-sizing: border-box;">
+      <!-- Video nativo visible para forzar decodificación en Firefox Android -->
+      <video id="visibleVideo" playsinline muted controls></video>
+
+      <div class="toolbar" style="margin: 10px 0 0 0; width: 100%; justify-content: center; padding: 8px; box-sizing: border-box;">
         <div class="controls-group">
           <button id="btnStop" title="Rebobinar a 0">⬛ STOP</button>
           <button id="btnPrev10" title="Retroceder 10 cuadros">⏪ -10</button>
@@ -135,15 +140,12 @@
     </div>
   </div>
 
-  <!-- Video visible por el motor pero imperceptible visualmente -->
-  <video id="hiddenVideo" playsinline muted autoplay></video>
-
   <script type="module">
     import mediaInfoFactory from 'https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.3/+esm';
 
     const els = {
       videoInput: document.getElementById('videoInput'),
-      video: document.getElementById('hiddenVideo'),
+      video: document.getElementById('visibleVideo'),
       canvas: document.getElementById('videoCanvas'),
       ctx: document.getElementById('videoCanvas').getContext('2d', { alpha: false }),
       status: document.getElementById('status'),
@@ -260,7 +262,7 @@
           state.isPlaying = true; 
           els.btnPlay.textContent = '⏸ PAUSE';
         } catch(err) {
-          console.error("Error al reproducir en Firefox Android:", err);
+          console.error("Error al reproducir:", err);
         }
       } else {
         els.video.pause(); 
@@ -289,7 +291,6 @@
       els.btnModeTrack.classList.toggle('active', mode === 'TRACK');
     }
 
-    // Soporte táctil y de mouse unificado
     els.canvas.addEventListener('pointerdown', (e) => {
       const rect = els.canvas.getBoundingClientRect();
       const scaleX = els.canvas.width / rect.width;
