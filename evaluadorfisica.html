@@ -251,12 +251,12 @@
                         <div class="flex items-center space-x-6 text-xs text-slate-600">
                             <div class="text-center">
                                 <span class="block font-bold text-lg text-slate-900">{{ currentStudentStats.count }}</span>
-                                <span>Evaluaciones Previas</span>
+                                <span>Preguntas Respondidas</span>
                             </div>
                             <div class="h-8 w-px bg-slate-300"></div>
                             <div class="text-center">
                                 <span class="block font-bold text-lg text-brand-600">{{ currentStudentStats.avgGrade }}</span>
-                                <span>Promedio Nota</span>
+                                <span>Nota Promedio</span>
                             </div>
                         </div>
                     </div>
@@ -356,7 +356,7 @@
                         </p>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             
-                            <!-- BIEN (1.0) -->
+                            <!-- BIEN (10 pts) -->
                             <button 
                                 @click="scoreQuestion(1.0, 'Bien')"
                                 class="group bg-emerald-50 hover:bg-emerald-600 border-2 border-emerald-500 text-emerald-800 hover:text-white p-5 rounded-2xl transition duration-150 shadow-sm hover:shadow-md flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center space-y-0 sm:space-y-2">
@@ -365,11 +365,11 @@
                                 </div>
                                 <div>
                                     <span class="block text-lg font-bold">BIEN</span>
-                                    <span class="text-xs opacity-90 font-medium">1.0 Punto</span>
+                                    <span class="text-xs opacity-90 font-medium">10 Puntos</span>
                                 </div>
                             </button>
 
-                            <!-- REGULAR (0.5) -->
+                            <!-- REGULAR (6 pts) -->
                             <button 
                                 @click="scoreQuestion(0.5, 'Regular')"
                                 class="group bg-amber-50 hover:bg-amber-500 border-2 border-amber-500 text-amber-900 hover:text-white p-5 rounded-2xl transition duration-150 shadow-sm hover:shadow-md flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center space-y-0 sm:space-y-2">
@@ -378,11 +378,11 @@
                                 </div>
                                 <div>
                                     <span class="block text-lg font-bold">REGULAR</span>
-                                    <span class="text-xs opacity-90 font-medium">0.5 Puntos</span>
+                                    <span class="text-xs opacity-90 font-medium">6 Puntos</span>
                                 </div>
                             </button>
 
-                            <!-- MAL (0.0) -->
+                            <!-- MAL (2 pts) -->
                             <button 
                                 @click="scoreQuestion(0.0, 'Mal')"
                                 class="group bg-rose-50 hover:bg-rose-600 border-2 border-rose-500 text-rose-800 hover:text-white p-5 rounded-2xl transition duration-150 shadow-sm hover:shadow-md flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center space-y-0 sm:space-y-2">
@@ -391,7 +391,7 @@
                                 </div>
                                 <div>
                                     <span class="block text-lg font-bold">MAL</span>
-                                    <span class="text-xs opacity-90 font-medium">0.0 Puntos</span>
+                                    <span class="text-xs opacity-90 font-medium">2 Puntos</span>
                                 </div>
                             </button>
 
@@ -404,14 +404,14 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-list-ol text-brand-500"></i>
-                            <h3 class="font-bold text-slate-800 text-base">Preguntas Evaluadas en esta Ronda</h3>
+                            <h3 class="font-bold text-slate-800 text-base">Preguntas Evaluadas en esta Sesión</h3>
                             <span class="bg-brand-100 text-brand-700 text-xs px-2.5 py-0.5 rounded-full font-bold">
                                 {{ activeRound.questions.length }}
                             </span>
                         </div>
                         <div class="text-right">
-                            <span class="text-xs text-slate-400 font-semibold block">PUNTAJE ACUMULADO</span>
-                            <span class="text-lg font-bold text-slate-900">{{ activeRoundTotalScore }} / {{ activeRound.questions.length }} pts</span>
+                            <span class="text-xs text-slate-400 font-semibold block">PROMEDIO SESIÓN</span>
+                            <span class="text-lg font-bold text-slate-900">{{ activeRoundGrade10 }} / 10</span>
                         </div>
                     </div>
 
@@ -425,11 +425,11 @@
                             </div>
                             <div class="flex items-center space-x-2 shrink-0">
                                 <span :class="{
-                                    'bg-emerald-100 text-emerald-800': q.score === 1.0,
-                                    'bg-amber-100 text-amber-800': q.score === 0.5,
-                                    'bg-rose-100 text-rose-800': q.score === 0.0
+                                    'bg-emerald-100 text-emerald-800': q.label === 'Bien',
+                                    'bg-amber-100 text-amber-800': q.label === 'Regular',
+                                    'bg-rose-100 text-rose-800': q.label === 'Mal'
                                 }" class="px-2.5 py-1 rounded-md font-bold">
-                                    {{ q.label }} ({{ q.score }})
+                                    {{ q.label }} ({{ q.points }} pts)
                                 </span>
                                 <button @click="removeQuestionFromRound(idx)" title="Eliminar de esta ronda" class="text-slate-400 hover:text-rose-600 transition p-1">
                                     <i class="fa-solid fa-trash-can"></i>
@@ -444,22 +444,22 @@
                             @click="openFinishRoundModal"
                             class="w-full sm:w-auto px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2">
                             <i class="fa-solid fa-flag-checkered"></i>
-                            <span>Finalizar Ronda y Guardar en Planilla</span>
+                            <span>Finalizar Sesión y Guardar en Planilla</span>
                         </button>
                     </div>
                 </div>
 
             </section>
 
-            <!-- TAB 2: HISTORIAL / PLANILLA -->
+            <!-- TAB 2: HISTORIAL / PLANILLA (CONSOLIDADO CON ACORDEÓN) -->
             <section v-if="activeTab === 'history'" class="space-y-6">
                 
                 <!-- HEADER & FILTROS & EXPORTACIÓN -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h2 class="text-lg font-bold text-slate-900">Planilla de Calificaciones</h2>
-                            <p class="text-xs text-slate-500">Historial completo con nombres de estudiantes, notas y exportación de reportes</p>
+                            <h2 class="text-lg font-bold text-slate-900">Planilla Consolidada de Alumnos</h2>
+                            <p class="text-xs text-slate-500">Un registro agrupado por estudiante con notas promediadas (Escala 1 a 10: Bien=10, Regular=6, Mal=2)</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <button @click="exportToCSV" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
@@ -481,7 +481,7 @@
 
                     <!-- Filter Controls -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                        <input type="text" v-model="historyFilterSearch" placeholder="Buscar alumno..." class="bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5">
+                        <input type="text" v-model="historyFilterSearch" placeholder="Buscar alumno por nombre..." class="bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5">
                         
                         <select v-model="historyFilterCourse" class="bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5">
                             <option value="">Todos los Cursos</option>
@@ -495,56 +495,163 @@
                     </div>
                 </div>
 
-                <!-- TABLA DE EVALUACIONES (SIN COLUMNA DE TP) -->
+                <!-- TABLA PLANILLA CON ORDENAMIENTO EN ENCABEZADOS Y DESPLEGABLE -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
-                                    <th class="p-3">Fecha / Hora</th>
-                                    <th class="p-3">Nombre y Apellido</th>
-                                    <th class="p-3">Curso / Grupo</th>
-                                    <th class="p-3 text-center">Desglose (B/R/M)</th>
-                                    <th class="p-3 text-center">Puntaje</th>
-                                    <th class="p-3 text-center">Nota (1 a 10)</th>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider select-none">
+                                    <th class="p-3 w-10 text-center"></th>
+                                    
+                                    <!-- Header Ordenable: Curso / Grupo -->
+                                    <th @click="toggleSort('courseGroup')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span>Curso / Grupo</span>
+                                            <i :class="sortIcon('courseGroup')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- Header Ordenable: Alumno -->
+                                    <th @click="toggleSort('studentName')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span>Nombre y Apellido</span>
+                                            <i :class="sortIcon('studentName')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- Header Ordenable: Última Fecha -->
+                                    <th @click="toggleSort('latestDate')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span>Última Evaluación</span>
+                                            <i :class="sortIcon('latestDate')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- Header Ordenable: Desglose / Cantidad -->
+                                    <th @click="toggleSort('evalCount')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center justify-center space-x-1.5">
+                                            <span>Preguntas Evaluadas</span>
+                                            <i :class="sortIcon('evalCount')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- Header Ordenable: Nota Promedio Final -->
+                                    <th @click="toggleSort('avgGrade')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center justify-center space-x-1.5">
+                                            <span>Nota Promedio (1 a 10)</span>
+                                            <i :class="sortIcon('avgGrade')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
                                     <th class="p-3 text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-if="filteredEvaluations.length === 0">
+                                <tr v-if="groupedEvaluations.length === 0">
                                     <td colspan="7" class="p-8 text-center text-slate-400 font-medium">
-                                        No se encontraron evaluaciones en la planilla.
+                                        No se encontraron estudiantes evaluados en la planilla.
                                     </td>
                                 </tr>
-                                <tr v-for="ev in filteredEvaluations" :key="ev.id" class="hover:bg-slate-50 transition">
-                                    <td class="p-3 text-slate-500 font-medium whitespace-nowrap">{{ formatDate(ev.date) }}</td>
-                                    <td class="p-3 font-bold text-slate-900 whitespace-nowrap text-sm">{{ ev.studentName }}</td>
-                                    <td class="p-3 text-slate-600 whitespace-nowrap">
-                                        <div class="font-medium">{{ ev.course }}</div>
-                                        <div class="text-[10px] text-slate-400">{{ ev.group }}</div>
-                                    </td>
-                                    <td class="p-3 text-center whitespace-nowrap">
-                                        <span class="inline-flex items-center space-x-1">
-                                            <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">{{ ev.bien }}B</span>
-                                            <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded font-bold">{{ ev.regular }}R</span>
-                                            <span class="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-bold">{{ ev.mal }}M</span>
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-center font-bold text-slate-700">{{ ev.score }} / {{ ev.maxPossible }} pts</td>
-                                    <td class="p-3 text-center whitespace-nowrap">
-                                        <span :class="gradeBadgeClass(ev.grade10)" class="px-2.5 py-1 rounded-full font-extrabold text-xs">
-                                            {{ ev.grade10 }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-center whitespace-nowrap space-x-2">
-                                        <button @click="viewEvaluationDetails(ev)" title="Ver detalle" class="text-slate-500 hover:text-brand-600 p-1">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-                                        <button @click="deleteEvaluation(ev.id)" title="Eliminar registro" class="text-slate-400 hover:text-rose-600 p-1">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+
+                                <template v-for="st in groupedEvaluations" :key="st.studentId">
+                                    
+                                    <!-- FILA PRINCIPAL POR ALUMNO -->
+                                    <tr class="hover:bg-slate-50 transition border-t border-slate-100">
+                                        <!-- BOTÓN DESPLEGABLE (▼ / ▲) -->
+                                        <td class="p-3 text-center">
+                                            <button @click="toggleExpandStudent(st.studentId)" 
+                                                    class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition">
+                                                <i :class="isExpanded(st.studentId) ? 'fa-solid fa-chevron-up text-brand-600' : 'fa-solid fa-chevron-down text-slate-500'"></i>
+                                            </button>
+                                        </td>
+
+                                        <td class="p-3 font-medium text-slate-700 whitespace-nowrap">
+                                            <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{{ st.course }}</span>
+                                            <span class="ml-1 text-slate-500 font-semibold">Grupo {{ st.group }}</span>
+                                        </td>
+
+                                        <td class="p-3 font-extrabold text-slate-900 whitespace-nowrap text-sm">
+                                            {{ st.studentName }}
+                                        </td>
+
+                                        <td class="p-3 text-slate-500 font-medium whitespace-nowrap">
+                                            {{ formatDate(st.latestDate) }}
+                                        </td>
+
+                                        <td class="p-3 text-center whitespace-nowrap">
+                                            <span class="font-bold text-slate-800">{{ st.evalCount }} evaluadas</span>
+                                            <div class="text-[10px] space-x-1 mt-0.5">
+                                                <span class="text-emerald-700 font-bold">{{ st.bienCount }}B</span>
+                                                <span class="text-amber-700 font-bold">{{ st.regularCount }}R</span>
+                                                <span class="text-rose-700 font-bold">{{ st.malCount }}M</span>
+                                            </div>
+                                        </td>
+
+                                        <!-- BADGE CON NOTA PROMEDIO PROPORCIONAL Y COLOR -->
+                                        <td class="p-3 text-center whitespace-nowrap">
+                                            <span :class="gradeBadgeClass(st.avgGrade)" class="px-3 py-1 rounded-full font-black text-xs border shadow-sm">
+                                                {{ st.avgGrade }} / 10
+                                            </span>
+                                        </td>
+
+                                        <td class="p-3 text-center whitespace-nowrap space-x-2">
+                                            <button @click="toggleExpandStudent(st.studentId)" class="text-brand-600 hover:text-brand-800 font-bold text-xs">
+                                                {{ isExpanded(st.studentId) ? 'Ocultar' : 'Ver Detalle' }}
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <!-- FILA DESPLEGABLE CON DETALLES DE INTENTOS EVALUADOS -->
+                                    <tr v-if="isExpanded(st.studentId)" class="bg-slate-50/80">
+                                        <td colspan="7" class="p-4 pl-12 border-b border-slate-200">
+                                            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-inner space-y-3">
+                                                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                                    <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center space-x-1">
+                                                        <i class="fa-solid fa-list-check text-brand-500"></i>
+                                                        <span>Detalle de Preguntas Evaluadas a {{ st.studentName }}</span>
+                                                    </h4>
+                                                    <span class="text-[11px] text-slate-400">Total intentos: {{ st.attempts.length }}</span>
+                                                </div>
+
+                                                <div class="overflow-x-auto">
+                                                    <table class="w-full text-left text-xs border-collapse">
+                                                        <thead>
+                                                            <tr class="bg-slate-100 text-slate-500 font-semibold border-b border-slate-200">
+                                                                <th class="p-2 w-36">Fecha/Hora</th>
+                                                                <th class="p-2 w-48">Trabajo Práctico</th>
+                                                                <th class="p-2">Pregunta Sorteada</th>
+                                                                <th class="p-2 text-center w-28">Calificación</th>
+                                                                <th class="p-2 text-center w-20">Acción</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody class="divide-y divide-slate-100">
+                                                            <tr v-for="att in st.attempts" :key="att.id" class="hover:bg-slate-50">
+                                                                <td class="p-2 text-slate-500 whitespace-nowrap">{{ formatDate(att.date) }}</td>
+                                                                <td class="p-2 font-bold text-slate-700 whitespace-nowrap">{{ att.tpName }}</td>
+                                                                <td class="p-2 text-slate-800 font-medium">"{{ att.questionText }}"</td>
+                                                                <td class="p-2 text-center whitespace-nowrap">
+                                                                    <span :class="{
+                                                                        'bg-emerald-100 text-emerald-800 border-emerald-300': att.grade === 'Bien',
+                                                                        'bg-amber-100 text-amber-800 border-amber-300': att.grade === 'Regular',
+                                                                        'bg-rose-100 text-rose-800 border-rose-300': att.grade === 'Mal'
+                                                                    }" class="px-2 py-0.5 rounded font-bold border">
+                                                                        {{ att.grade }} ({{ att.points }} pts)
+                                                                    </span>
+                                                                </td>
+                                                                <td class="p-2 text-center">
+                                                                    <button @click="deleteSpecificAttempt(att)" title="Eliminar este intento individual" class="text-slate-400 hover:text-rose-600 p-1 font-bold">
+                                                                        <i class="fa-solid fa-trash-can"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                </template>
                             </tbody>
                         </table>
                     </div>
@@ -1002,27 +1109,27 @@
                 <!-- Estadísticas de la Ronda -->
                 <div class="grid grid-cols-3 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">BIEN</span>
+                        <span class="text-xs text-slate-400 font-semibold block">BIEN (10 pts)</span>
                         <span class="text-lg font-extrabold text-emerald-600">{{ finishSummary.bien }}</span>
                     </div>
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">REGULAR</span>
+                        <span class="text-xs text-slate-400 font-semibold block">REGULAR (6 pts)</span>
                         <span class="text-lg font-extrabold text-amber-600">{{ finishSummary.regular }}</span>
                     </div>
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">MAL</span>
+                        <span class="text-xs text-slate-400 font-semibold block">MAL (2 pts)</span>
                         <span class="text-lg font-extrabold text-rose-600">{{ finishSummary.mal }}</span>
                     </div>
                 </div>
 
                 <!-- NOTA FINAL ESCALA DE 10 -->
                 <div class="bg-brand-50 border border-brand-200 p-4 rounded-2xl text-center space-y-1">
-                    <span class="text-xs font-bold text-brand-700 uppercase tracking-wide">Calificación Sugerida</span>
+                    <span class="text-xs font-bold text-brand-700 uppercase tracking-wide">Nota Promedio de la Sesión</span>
                     <div class="text-3xl font-black text-brand-900">
                         {{ finishSummary.grade10 }} <span class="text-sm font-normal text-slate-500">/ 10</span>
                     </div>
                     <span class="text-[11px] text-slate-500 block">
-                        ({{ finishSummary.score }} pts obtenidos de {{ finishSummary.maxPossible }} pts posibles)
+                        ({{ finishSummary.totalPoints }} pts totales acumulados en {{ finishSummary.totalQuestions }} preguntas)
                     </span>
                 </div>
 
@@ -1042,50 +1149,6 @@
                     </button>
                 </div>
 
-            </div>
-        </div>
-
-        <!-- MODAL: DETALLES DE EVALUACIÓN -->
-        <div v-if="selectedEvaluationDetail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <h3 class="font-bold text-slate-900 text-base">Detalle de Examen Oral</h3>
-                    <button @click="selectedEvaluationDetail = null" class="text-slate-400 hover:text-slate-600">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                <div class="text-xs space-y-1 text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <p><strong class="text-slate-900">Estudiante:</strong> {{ selectedEvaluationDetail.studentName }}</p>
-                    <p><strong>Curso / Grupo:</strong> {{ selectedEvaluationDetail.course }} ({{ selectedEvaluationDetail.group }})</p>
-                    <p><strong>Fecha:</strong> {{ formatDate(selectedEvaluationDetail.date) }}</p>
-                    <p><strong>Nota Final:</strong> <span class="font-bold text-brand-600">{{ selectedEvaluationDetail.grade10 }} / 10</span></p>
-                    <p v-if="selectedEvaluationDetail.notes"><strong>Observaciones:</strong> {{ selectedEvaluationDetail.notes }}</p>
-                </div>
-
-                <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Preguntas y Calificaciones:</p>
-                    <div v-for="(item, idx) in selectedEvaluationDetail.details" :key="idx" class="p-2.5 bg-slate-50 rounded-xl text-xs space-y-1 border border-slate-100">
-                        <div class="flex items-center justify-between text-slate-400 text-[10px] font-semibold mb-1">
-                            <span>TP {{ item.tp }} - Pregunta {{ item.qId }}</span>
-                        </div>
-                        <p class="font-semibold text-slate-800">"{{ item.text }}"</p>
-                        <div class="flex items-center justify-between pt-1">
-                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold"
-                                  :class="{
-                                    'bg-emerald-100 text-emerald-800': item.score === 1.0,
-                                    'bg-amber-100 text-amber-800': item.score === 0.5,
-                                    'bg-rose-100 text-rose-800': item.score === 0.0
-                                  }">
-                                {{ item.label }} ({{ item.score }} pt)
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <button @click="selectedEvaluationDetail = null" class="w-full py-2.5 bg-slate-800 text-white text-xs font-bold rounded-xl">
-                    Cerrar
-                </button>
             </div>
         </div>
 
@@ -1180,6 +1243,13 @@
             }
         }
 
+        // ESCCALA ESTANDARIZADA DE CALIFICACIÓN: BIEN=10, REGULAR=6, MAL=2
+        function getPointsFromGrade(label, score) {
+            if (label === 'Bien' || score === 1.0 || score === 10) return 10;
+            if (label === 'Regular' || score === 0.5 || score === 6) return 6;
+            return 2; // Mal / 0.0
+        }
+
         createApp({
             setup() {
                 const activeTab = ref('evaluator');
@@ -1191,9 +1261,27 @@
                 watch(appTitle, val => localStorage.setItem('eval_appTitle', val));
                 watch(appSubtitle, val => localStorage.setItem('eval_appSubtitle', val));
 
+                // DEFAULT TPS LIST (TP 5 & TP 11 DESHABILITADOS POR DEFECTO)
+                const defaultTpsList = [
+                    { id: 1, name: 'Introducción a las Mediciones', enabled: true },
+                    { id: 2, name: 'Razones y Proporciones', enabled: true },
+                    { id: 3, name: 'Error en las Mediciones', enabled: true },
+                    { id: 4, name: 'Medición de Fuerzas y Elasticidad', enabled: true },
+                    { id: 5, name: 'Peso Específico y Densidad', enabled: false },
+                    { id: 6, name: 'Paralelogramo de Fuerzas, Fuerzas Paralelas y Plano Inclinado', enabled: true },
+                    { id: 7, name: 'Momento de una Fuerza, Palancas, Balanzas y Poleas', enabled: true },
+                    { id: 8, name: 'Movimiento Rectilíneo Uniforme (MRU)', enabled: true },
+                    { id: 9, name: 'Movimiento Rectilíneo Uniformemente Acelerado (MRUA)', enabled: true },
+                    { id: 10, name: 'Caída Libre y Tiro Vertical', enabled: true },
+                    { id: 11, name: 'Movimiento Circular Uniforme (MCU)', enabled: false },
+                    { id: 12, name: 'Dinámica y Leyes de Newton', enabled: true },
+                    { id: 13, name: 'Trabajo, Potencia y Conservación de la Energía', enabled: true },
+                    { id: 14, name: 'Péndulo Ideal y Oscilaciones', enabled: true }
+                ];
+
                 // REACTIVE STATE DESDE LOCALSTORAGE SEGURO
                 const students = ref(safeGetStorage('eval_students', []));
-                const tps = ref(safeGetStorage('eval_tps', []));
+                const tps = ref(safeGetStorage('eval_tps', defaultTpsList));
                 const questionBank = ref(safeGetStorage('eval_questionBank', {}));
                 const evaluations = ref(safeGetStorage('eval_evaluations', []));
 
@@ -1252,11 +1340,14 @@
                 // MODALS & INPUTS
                 const showFinishModal = ref(false);
                 const finishNotes = ref('');
-                const selectedEvaluationDetail = ref(null);
 
+                // PLANILLA ACCORDION & SORTING STATE
                 const historyFilterSearch = ref('');
                 const historyFilterCourse = ref('');
                 const historyFilterGroup = ref('');
+                const sortColumn = ref('studentName');
+                const sortOrder = ref('asc');
+                const expandedStudents = ref({});
 
                 const newStudent = ref({ name: '', course: '', group: '' });
                 const bulkStudentsText = ref('');
@@ -1299,63 +1390,179 @@
 
                 const currentStudentStats = computed(() => {
                     if (!currentStudent.value) return { count: 0, avgGrade: '-' };
-                    const studentEvals = evaluations.value.filter(e => e.studentId === currentStudent.value.id);
-                    if (studentEvals.length === 0) return { count: 0, avgGrade: '-' };
-                    
-                    const sum = studentEvals.reduce((acc, curr) => acc + curr.grade10, 0);
-                    const avg = (sum / studentEvals.length).toFixed(1);
-                    return { count: studentEvals.length, avgGrade: avg };
+                    const stSummary = groupedEvaluations.value.find(st => st.studentId === currentStudent.value.id);
+                    if (!stSummary || stSummary.evalCount === 0) return { count: 0, avgGrade: '-' };
+                    return { count: stSummary.evalCount, avgGrade: stSummary.avgGrade.toFixed(1) };
                 });
 
-                const activeRoundTotalScore = computed(() => {
-                    return activeRound.value.questions.reduce((acc, q) => acc + q.score, 0);
+                const activeRoundTotalPoints = computed(() => {
+                    return activeRound.value.questions.reduce((acc, q) => acc + q.points, 0);
+                });
+
+                const activeRoundGrade10 = computed(() => {
+                    const count = activeRound.value.questions.length;
+                    if (count === 0) return '0.0';
+                    return (activeRoundTotalPoints.value / count).toFixed(1);
                 });
 
                 const finishSummary = computed(() => {
                     const qs = activeRound.value.questions;
                     let bien = 0, regular = 0, mal = 0;
                     qs.forEach(q => {
-                        if (q.score === 1.0) bien++;
-                        else if (q.score === 0.5) regular++;
+                        if (q.points === 10) bien++;
+                        else if (q.points === 6) regular++;
                         else mal++;
                     });
-                    const totalPts = activeRoundTotalScore.value;
-                    const maxPts = qs.length;
-                    const grade10 = maxPts > 0 ? ((totalPts / maxPts) * 10).toFixed(1) : '0.0';
+                    const totalPts = activeRoundTotalPoints.value;
+                    const count = qs.length;
+                    const grade10 = count > 0 ? (totalPts / count).toFixed(1) : '0.0';
 
                     return {
-                        totalQuestions: qs.length,
+                        totalQuestions: count,
                         bien,
                         regular,
                         mal,
-                        score: totalPts,
-                        maxPossible: maxPts,
+                        totalPoints: totalPts,
                         grade10: parseFloat(grade10)
                     };
                 });
 
-                const filteredEvaluations = computed(() => {
-                    return evaluations.value.filter(e => {
-                        const matchesSearch = !historyFilterSearch.value || e.studentName.toLowerCase().includes(historyFilterSearch.value.toLowerCase());
-                        const matchesCourse = !historyFilterCourse.value || e.course === historyFilterCourse.value;
-                        const matchesGroup = !historyFilterGroup.value || e.group === historyFilterGroup.value;
+                // PLANILLA AGRUPADA POR ALUMNO (CONSOLIDADA 1 ROW POR ESTUDIANTE CON ACORDEÓN Y ENCABEZADOS ORDENABLES)
+                const groupedEvaluations = computed(() => {
+                    const studentMap = {};
+
+                    evaluations.value.forEach(ev => {
+                        const stId = ev.studentId;
+                        const stName = ev.studentName;
+                        const course = ev.course;
+                        const group = ev.group;
+                        const evDate = ev.date || ev.timestamp;
+
+                        if (!studentMap[stId]) {
+                            studentMap[stId] = {
+                                studentId: stId,
+                                studentName: stName,
+                                course: course,
+                                group: group,
+                                courseGroup: `${course} - Grupo ${group}`,
+                                attempts: [],
+                                latestDate: evDate
+                            };
+                        }
+
+                        if (new Date(evDate) > new Date(studentMap[stId].latestDate)) {
+                            studentMap[stId].latestDate = evDate;
+                        }
+
+                        if (Array.isArray(ev.details) && ev.details.length > 0) {
+                            ev.details.forEach((d, idx) => {
+                                const pts = getPointsFromGrade(d.label, d.score);
+                                const tpFound = tps.value.find(t => t.id === parseInt(d.tp));
+                                studentMap[stId].attempts.push({
+                                    id: `${ev.id}-d${idx}`,
+                                    parentEvId: ev.id,
+                                    detailIndex: idx,
+                                    date: evDate,
+                                    tp: d.tp,
+                                    tpName: tpFound ? `TP Nº ${d.tp}: ${tpFound.name}` : `TP Nº ${d.tp}`,
+                                    questionText: d.text,
+                                    grade: d.label || (d.score === 1.0 ? 'Bien' : d.score === 0.5 ? 'Regular' : 'Mal'),
+                                    points: pts
+                                });
+                            });
+                        } else if (ev.questionText) {
+                            const pts = getPointsFromGrade(ev.grade, ev.score);
+                            const tpFound = tps.value.find(t => t.id === parseInt(ev.tpNum));
+                            studentMap[stId].attempts.push({
+                                id: ev.id,
+                                parentEvId: ev.id,
+                                detailIndex: null,
+                                date: evDate,
+                                tp: ev.tpNum || 1,
+                                tpName: tpFound ? `TP Nº ${ev.tpNum}: ${tpFound.name}` : `TP Nº ${ev.tpNum || 1}`,
+                                questionText: ev.questionText,
+                                grade: ev.grade || 'Bien',
+                                points: pts
+                            });
+                        }
+                    });
+
+                    // Procesa resumen y calcula nota promedio escala 1 a 10 por alumno
+                    const result = Object.values(studentMap).map(st => {
+                        let bien = 0, regular = 0, mal = 0, sumPts = 0;
+                        st.attempts.forEach(att => {
+                            sumPts += att.points;
+                            if (att.points === 10) bien++;
+                            else if (att.points === 6) regular++;
+                            else mal++;
+                        });
+
+                        const count = st.attempts.length;
+                        const avgGrade = count > 0 ? parseFloat((sumPts / count).toFixed(1)) : 0;
+
+                        return {
+                            ...st,
+                            evalCount: count,
+                            bienCount: bien,
+                            regularCount: regular,
+                            malCount: mal,
+                            totalPoints: sumPts,
+                            avgGrade: avgGrade
+                        };
+                    });
+
+                    // Filtros por búsqueda, curso y grupo
+                    const filtered = result.filter(st => {
+                        const matchesSearch = !historyFilterSearch.value || st.studentName.toLowerCase().includes(historyFilterSearch.value.toLowerCase());
+                        const matchesCourse = !historyFilterCourse.value || st.course === historyFilterCourse.value;
+                        const matchesGroup = !historyFilterGroup.value || st.group === historyFilterGroup.value;
                         return matchesSearch && matchesCourse && matchesGroup;
-                    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+                    });
+
+                    // Ordenamiento dinámico en encabezados
+                    filtered.sort((a, b) => {
+                        let valA = a[sortColumn.value];
+                        let valB = b[sortColumn.value];
+
+                        if (sortColumn.value === 'latestDate') {
+                            valA = new Date(valA).getTime();
+                            valB = new Date(valB).getTime();
+                        } else if (typeof valA === 'string') {
+                            valA = valA.toLowerCase();
+                            valB = valB.toLowerCase();
+                        }
+
+                        if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+                        if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+
+                    return filtered;
                 });
 
-                // COMPUTED FOR ANONYMOUS MATRIX STATISTICAL REPORT (EXCLUSIVELY ENABLED TPS)
+                // MATRIZ ESTADÍSTICA (EXCLUSIVAMENTE TPS HABILITADOS)
                 const tpStatistics = computed(() => {
                     const allDetails = [];
                     evaluations.value.forEach(ev => {
                         if (Array.isArray(ev.details)) {
                             ev.details.forEach(d => {
+                                const pts = getPointsFromGrade(d.label, d.score);
                                 allDetails.push({
                                     tp: parseInt(d.tp),
                                     qId: String(d.qId),
                                     text: d.text,
-                                    score: Number(d.score),
+                                    score: pts,
                                     label: d.label
                                 });
+                            });
+                        } else if (ev.questionText) {
+                            const pts = getPointsFromGrade(ev.grade, ev.score);
+                            allDetails.push({
+                                tp: parseInt(ev.tpNum || 1),
+                                qId: String(ev.qId || 1),
+                                text: ev.questionText,
+                                score: pts,
+                                label: ev.grade
                             });
                         }
                     });
@@ -1375,7 +1582,7 @@
                                 bien: 0,
                                 regular: 0,
                                 mal: 0,
-                                totalScore: 0
+                                totalPoints: 0
                             };
                         });
 
@@ -1388,19 +1595,19 @@
                                     bien: 0,
                                     regular: 0,
                                     mal: 0,
-                                    totalScore: 0
+                                    totalPoints: 0
                                 };
                             }
                             const qStat = qStatsMap[d.qId];
                             qStat.count++;
-                            qStat.totalScore += d.score;
-                            if (d.score === 1.0) qStat.bien++;
-                            else if (d.score === 0.5) qStat.regular++;
+                            qStat.totalPoints += d.score;
+                            if (d.score === 10) qStat.bien++;
+                            else if (d.score === 6) qStat.regular++;
                             else qStat.mal++;
                         });
 
                         const questionList = Object.values(qStatsMap).map(q => {
-                            const successRate = q.count > 0 ? Math.round((q.totalScore / q.count) * 100) : 0;
+                            const successRate = q.count > 0 ? Math.round((q.totalPoints / (q.count * 10)) * 100) : 0;
                             return {
                                 ...q,
                                 successRate
@@ -1409,7 +1616,7 @@
 
                         const totalEvaluationsInTp = tpDetails.length;
                         const sumScoresInTp = tpDetails.reduce((acc, curr) => acc + curr.score, 0);
-                        const tpAvgScore = totalEvaluationsInTp > 0 ? ((sumScoresInTp / totalEvaluationsInTp) * 10).toFixed(1) : '-';
+                        const tpAvgScore = totalEvaluationsInTp > 0 ? (sumScoresInTp / totalEvaluationsInTp).toFixed(1) : '-';
 
                         return {
                             id: tp.id,
@@ -1421,6 +1628,45 @@
                         };
                     });
                 });
+
+                // METHODS FOR PLANILLA ORDENABLE Y ACORDEÓN
+                function toggleSort(col) {
+                    if (sortColumn.value === col) {
+                        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortColumn.value = col;
+                        sortOrder.value = 'asc';
+                    }
+                }
+
+                function sortIcon(col) {
+                    if (sortColumn.value !== col) return 'fa-solid fa-sort';
+                    return sortOrder.value === 'asc' ? 'fa-solid fa-sort-up text-brand-600' : 'fa-solid fa-sort-down text-brand-600';
+                }
+
+                function toggleExpandStudent(studentId) {
+                    expandedStudents.value[studentId] = !expandedStudents.value[studentId];
+                }
+
+                function isExpanded(studentId) {
+                    return !!expandedStudents.value[studentId];
+                }
+
+                function deleteSpecificAttempt(attempt) {
+                    const evIndex = evaluations.value.findIndex(e => e.id === attempt.parentEvId);
+                    if (evIndex !== -1) {
+                        const ev = evaluations.value[evIndex];
+                        if (Array.isArray(ev.details) && attempt.detailIndex !== null) {
+                            ev.details.splice(attempt.detailIndex, 1);
+                            if (ev.details.length === 0) {
+                                evaluations.value.splice(evIndex, 1);
+                            }
+                        } else {
+                            evaluations.value.splice(evIndex, 1);
+                        }
+                        showToast("Intento individual eliminado de la planilla", "info");
+                    }
+                }
 
                 // METHODS FOR EVALUATION PROCESS
                 function onCourseOrGroupChange() {
@@ -1454,7 +1700,8 @@
                 }
 
                 function getStudentEvalCount(studentId) {
-                    return evaluations.value.filter(e => e.studentId === studentId).length;
+                    const summary = groupedEvaluations.value.find(s => s.studentId === studentId);
+                    return summary ? summary.evalCount : 0;
                 }
 
                 function getTpQuestionCount(tpId) {
@@ -1531,13 +1778,15 @@
                     if (!currentStudent.value || !currentQuestionItem.value) return;
 
                     showAnswer.value = false;
+                    const pts = getPointsFromGrade(labelName, scoreVal);
 
                     activeRound.value.questions.push({
                         tp: selectedTp.value,
                         qId: currentQuestionItem.value.id,
                         text: currentQuestionItem.value.text,
                         score: scoreVal,
-                        label: labelName
+                        label: labelName,
+                        points: pts
                     });
 
                     const tpKey = `tp${selectedTp.value}`;
@@ -1551,7 +1800,7 @@
                         currentStudent.value.questionHistory[tpKey].push(currentQuestionItem.value.id);
                     }
 
-                    showToast(`Respuesta calificada como ${labelName} (+${scoreVal} pt)`, 'success');
+                    showToast(`Respuesta calificada como ${labelName} (${pts} pts)`, 'success');
                     pickRandomQuestion();
                 }
 
@@ -1577,8 +1826,7 @@
                         group: currentStudent.value.group,
                         date: new Date().toISOString(),
                         totalQuestions: summary.totalQuestions,
-                        score: summary.score,
-                        maxPossible: summary.maxPossible,
+                        totalPoints: summary.totalPoints,
                         grade10: summary.grade10,
                         bien: summary.bien,
                         regular: summary.regular,
@@ -1608,40 +1856,31 @@
                 }
 
                 function gradeBadgeClass(grade) {
-                    if (grade >= 7.0) return 'bg-emerald-100 text-emerald-800';
-                    if (grade >= 4.0) return 'bg-amber-100 text-amber-800';
-                    return 'bg-rose-100 text-rose-800';
+                    if (grade >= 7.0) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                    if (grade >= 4.0) return 'bg-amber-100 text-amber-800 border-amber-300';
+                    return 'bg-rose-100 text-rose-800 border-rose-300';
                 }
 
-                function viewEvaluationDetails(ev) {
-                    selectedEvaluationDetail.value = ev;
-                }
-
-                function deleteEvaluation(id) {
-                    evaluations.value = evaluations.value.filter(e => e.id !== id);
-                    showToast("Registro eliminado", "info");
-                }
-
-                // EXPORT PLANILLA TO CSV (WITHOUT TP COLUMN)
+                // EXPORT PLANILLA TO CSV (CONSOLIDADO CON VALORES COINCIDENTES)
                 function exportToCSV() {
-                    if (evaluations.value.length === 0) {
+                    if (groupedEvaluations.value.length === 0) {
                         showToast("No hay registros en la planilla.", "warning");
                         return;
                     }
 
-                    const headers = ["Fecha", "Nombre y Apellido", "Curso", "Grupo", "Bien (1pt)", "Regular (0.5pt)", "Mal (0pt)", "Puntaje Total", "Nota (10)", "Observaciones"];
+                    const headers = ["Curso", "Grupo", "Nombre y Apellido", "Ultima Evaluacion", "Preguntas Evaluadas", "Bien (10pt)", "Regular (6pt)", "Mal (2pt)", "Nota Promedio (10)", "Condicion"];
                     
-                    const rows = filteredEvaluations.value.map(e => [
-                        formatDate(e.date),
-                        `"${e.studentName.replace(/"/g, '""')}"`,
-                        `"${e.course.replace(/"/g, '""')}"`,
-                        `"${e.group.replace(/"/g, '""')}"`,
-                        e.bien,
-                        e.regular,
-                        e.mal,
-                        e.score,
-                        e.grade10,
-                        `"${(e.notes || '').replace(/"/g, '""')}"`
+                    const rows = groupedEvaluations.value.map(st => [
+                        `"${st.course.replace(/"/g, '""')}"`,
+                        `"${st.group.replace(/"/g, '""')}"`,
+                        `"${st.studentName.replace(/"/g, '""')}"`,
+                        formatDate(st.latestDate),
+                        st.evalCount,
+                        st.bienCount,
+                        st.regularCount,
+                        st.malCount,
+                        st.avgGrade,
+                        st.avgGrade >= 6.0 ? "Aprobado" : "Desaprobado"
                     ]);
 
                     let csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
@@ -1649,14 +1888,14 @@
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement("a");
                     link.setAttribute("href", url);
-                    link.setAttribute("download", `Planilla_Calificaciones_${new Date().toISOString().slice(0,10)}.csv`);
+                    link.setAttribute("download", `Planilla_Consolidada_Alumnos_${new Date().toISOString().slice(0,10)}.csv`);
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    showToast("Planilla descargada en formato CSV (Excel)", "success");
+                    showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // PDF GENERATION FOR STUDENTS
+                // PDF GENERATION FOR STUDENTS (CONSOLIDADO Y COINCIDENTE)
                 function exportStudentsPDF(courseFilter = null) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
@@ -1686,42 +1925,30 @@
                     doc.setTextColor(30);
                     doc.text(reportTitle, 14, 40);
 
-                    let targetStudents = students.value;
+                    let targetSummaries = groupedEvaluations.value;
                     if (courseFilter) {
-                        targetStudents = targetStudents.filter(s => s.course === courseFilter);
+                        targetSummaries = targetSummaries.filter(st => st.course === courseFilter);
                     }
 
-                    const tableBody = targetStudents.map(s => {
-                        const sEvals = evaluations.value.filter(e => e.studentId === s.id);
-                        const evalCount = sEvals.length;
-                        let bien = 0, regular = 0, mal = 0, sumGrade = 0;
-                        sEvals.forEach(e => {
-                            bien += e.bien || 0;
-                            regular += e.regular || 0;
-                            mal += e.mal || 0;
-                            sumGrade += parseFloat(e.grade10 || 0);
-                        });
-                        const avg = evalCount > 0 ? (sumGrade / evalCount).toFixed(1) : '-';
-
-                        return [
-                            s.name,
-                            s.course,
-                            s.group,
-                            evalCount,
-                            bien,
-                            regular,
-                            mal,
-                            avg
-                        ];
-                    });
+                    const tableBody = targetSummaries.map(st => [
+                        st.studentName,
+                        st.course,
+                        st.group,
+                        st.evalCount,
+                        st.bienCount,
+                        st.regularCount,
+                        st.malCount,
+                        st.avgGrade,
+                        st.avgGrade >= 6.0 ? 'Aprobado' : 'Desaprobado'
+                    ]);
 
                     doc.autoTable({
                         startY: 45,
-                        head: [['Estudiante', 'Curso', 'Grupo', 'Exámenes', 'Bien', 'Reg', 'Mal', 'Promedio (1-10)']],
+                        head: [['Estudiante', 'Curso', 'Grupo', 'Evaluadas', 'Bien', 'Reg', 'Mal', 'Promedio (1-10)', 'Condición']],
                         body: tableBody,
                         theme: 'striped',
                         headStyles: { fillColor: [2, 132, 199] },
-                        styles: { fontSize: 9 }
+                        styles: { fontSize: 8 }
                     });
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
@@ -1794,7 +2021,7 @@
 
                 // EXPORT MATRIX STATISTICS TO CSV (ENABLED TPS ONLY)
                 function exportMatrixCSV() {
-                    const headers = ["ID TP", "Nombre TP", "ID Pregunta", "Pregunta", "Frecuencia Evaluada", "Bien (1.0)", "Regular (0.5)", "Mal (0.0)", "% Acierto"];
+                    const headers = ["ID TP", "Nombre TP", "ID Pregunta", "Pregunta", "Frecuencia Evaluada", "Bien (10pt)", "Regular (6pt)", "Mal (2pt)", "% Acierto"];
                     const rows = [];
 
                     tpStatistics.value.forEach(tpStat => {
@@ -2146,8 +2373,8 @@
                     currentQuestionItem.value = null;
                     wasQuestionCycleReset.value = false;
                     showAnswer.value = false;
+                    expandedStudents.value = {};
                     
-                    // Limpieza profunda del historial de preguntas para reiniciar contadores de ciclo y rotación por alumno
                     if (Array.isArray(students.value)) {
                         students.value.forEach(s => {
                             s.questionHistory = {};
@@ -2175,6 +2402,7 @@
                     selectedGroup.value = '';
                     selectedStudentId.value = '';
                     currentStudent.value = null;
+                    expandedStudents.value = {};
                     try { localStorage.removeItem('eval_students'); } catch(e){}
                     showToast("Lista de alumnos vaciada con éxito.", "success");
                 }
@@ -2220,7 +2448,7 @@
 
                 function doResetAll() {
                     students.value = [];
-                    tps.value = [];
+                    tps.value = defaultTpsList;
                     questionBank.value = {};
                     evaluations.value = [];
                     selectedCourse.value = '';
@@ -2229,6 +2457,7 @@
                     currentStudent.value = null;
                     currentQuestionItem.value = null;
                     showAnswer.value = false;
+                    expandedStudents.value = {};
                     appTitle.value = 'Evaluador';
                     appSubtitle.value = 'Laboratorio de Física';
                     activeRound.value = { studentId: '', questions: [] };
@@ -2269,12 +2498,14 @@
                     activeRound,
                     showFinishModal,
                     finishNotes,
-                    selectedEvaluationDetail,
                     confirmModal,
                     executeConfirmAction,
                     historyFilterSearch,
                     historyFilterCourse,
                     historyFilterGroup,
+                    sortColumn,
+                    sortOrder,
+                    groupedEvaluations,
                     newStudent,
                     bulkStudentsText,
                     tpsCSVText,
@@ -2287,9 +2518,9 @@
                     toastIcon,
                     filteredStudents,
                     currentStudentStats,
-                    activeRoundTotalScore,
+                    activeRoundTotalPoints,
+                    activeRoundGrade10,
                     finishSummary,
-                    filteredEvaluations,
                     onCourseOrGroupChange,
                     loadStudentData,
                     selectTP,
@@ -2306,8 +2537,11 @@
                     getInitials,
                     formatDate,
                     gradeBadgeClass,
-                    viewEvaluationDetails,
-                    deleteEvaluation,
+                    toggleSort,
+                    sortIcon,
+                    toggleExpandStudent,
+                    isExpanded,
+                    deleteSpecificAttempt,
                     exportToCSV,
                     exportStudentsPDF,
                     exportMatrixPDF,
