@@ -243,7 +243,7 @@
                                 <h3 class="text-base font-bold text-slate-900">{{ currentStudent.name }}</h3>
                                 <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
                                     <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-book-open mr-1"></i>{{ currentStudent.course }}</span>
-                                    <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-users mr-1"></i>{{ currentStudent.group }}</span>
+                                    <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-users mr-1"></i>Grupo {{ currentStudent.group }}</span>
                                 </div>
                             </div>
                         </div>
@@ -474,7 +474,7 @@
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <h2 class="text-lg font-bold text-slate-900">Planilla Consolidada de Alumnos y Notas</h2>
-                            <p class="text-xs text-slate-500">Nómina completa de estudiantes con desglose de TPs evaluados, estado de etapa y notas (Bien=10, Regular=6, Mal=1)</p>
+                            <p class="text-xs text-slate-500">Nómina completa ordenada por Curso, Grupo y Alumno. Notas en Escala 1-10 y Calificación conceptual redondeada.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <button @click="exportToCSV" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
@@ -516,7 +516,7 @@
                     </div>
                 </div>
 
-                <!-- TABLA PLANILLA CON ORDENAMIENTO EN ENCABEZADOS Y DESPLEGABLE -->
+                <!-- TABLA PLANILLA CON ORDENAMIENTO POR DEFECTO (CURSO -> GRUPO -> ALUMNO) Y COLUMNAS SEPARADAS -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left border-collapse text-xs">
@@ -524,11 +524,19 @@
                                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider select-none">
                                     <th class="p-3 w-10 text-center"></th>
                                     
-                                    <!-- Header Ordenable: Curso / Grupo -->
-                                    <th @click="toggleSort('courseGroup')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
+                                    <!-- Header Ordenable: Curso (Columna Independiente) -->
+                                    <th @click="toggleSort('course')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center space-x-1.5">
-                                            <span>Curso / Grupo</span>
-                                            <i :class="sortIcon('courseGroup')" class="text-slate-400"></i>
+                                            <span>Curso</span>
+                                            <i :class="sortIcon('course')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- Header Ordenable: Grupo (Columna Independiente) -->
+                                    <th @click="toggleSort('group')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center space-x-1.5">
+                                            <span>Grupo</span>
+                                            <i :class="sortIcon('group')" class="text-slate-400"></i>
                                         </div>
                                     </th>
 
@@ -548,7 +556,7 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Desglose / Cantidad -->
+                                    <!-- Header Ordenable: Cantidad Preguntas -->
                                     <th @click="toggleSort('evalCount')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center justify-center space-x-1.5">
                                             <span>Preguntas Evaluadas</span>
@@ -559,8 +567,16 @@
                                     <!-- Header Ordenable: Nota Promedio Final -->
                                     <th @click="toggleSort('avgGrade')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center justify-center space-x-1.5">
-                                            <span>Nota Promedio (1 a 10)</span>
+                                            <span>Nota Promedio</span>
                                             <i :class="sortIcon('avgGrade')" class="text-slate-400"></i>
+                                        </div>
+                                    </th>
+
+                                    <!-- NUEVA COLUMNA: CALIFICACIÓN CONCEPTUAL REDONDEADA -->
+                                    <th @click="toggleSort('calificacion')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
+                                        <div class="flex items-center justify-center space-x-1.5">
+                                            <span>Calificación</span>
+                                            <i :class="sortIcon('calificacion')" class="text-slate-400"></i>
                                         </div>
                                     </th>
 
@@ -572,7 +588,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 <tr v-if="groupedEvaluations.length === 0">
-                                    <td colspan="8" class="p-8 text-center text-slate-400 font-medium">
+                                    <td colspan="10" class="p-8 text-center text-slate-400 font-medium">
                                         No se encontraron alumnos que coincidan con los filtros.
                                     </td>
                                 </tr>
@@ -589,9 +605,14 @@
                                             </button>
                                         </td>
 
-                                        <td class="p-3 font-medium text-slate-700 whitespace-nowrap">
+                                        <!-- COLUMNA INDEPENDIENTE: CURSO -->
+                                        <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">
                                             <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{{ st.course }}</span>
-                                            <span class="ml-1 text-slate-500 font-semibold">Grupo {{ st.group }}</span>
+                                        </td>
+
+                                        <!-- COLUMNA INDEPENDIENTE: GRUPO -->
+                                        <td class="p-3 font-semibold text-slate-700 whitespace-nowrap">
+                                            <span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-bold">Grupo {{ st.group }}</span>
                                         </td>
 
                                         <td class="p-3 font-extrabold text-slate-900 whitespace-nowrap text-sm cursor-pointer hover:text-brand-600" @click="toggleExpandStudent(st.studentId)">
@@ -612,10 +633,18 @@
                                             </div>
                                         </td>
 
-                                        <!-- BADGE CON NOTA PROMEDIO PROPORCIONAL Y COLOR -->
+                                        <!-- PROMEDIO EXACTO ESCALA 1 A 10 -->
                                         <td class="p-3 text-center whitespace-nowrap">
-                                            <span v-if="st.evalCount > 0" :class="gradeBadgeClass(st.avgGrade)" class="px-3 py-1 rounded-full font-black text-xs border shadow-sm">
+                                            <span v-if="st.evalCount > 0" :class="gradeBadgeClass(st.avgGrade)" class="px-2.5 py-1 rounded-full font-black text-xs border shadow-sm">
                                                 {{ st.avgGrade }} / 10
+                                            </span>
+                                            <span v-else class="text-slate-400 italic">Sin evaluar</span>
+                                        </td>
+
+                                        <!-- NUEVA CELDA: CALIFICACIÓN REDONDEADA Y CONCEPTUAL -->
+                                        <td class="p-3 text-center whitespace-nowrap">
+                                            <span v-if="st.evalCount > 0" :class="calificacionBadgeClass(st.avgGrade)" class="px-2.5 py-1 rounded-lg font-bold text-xs border shadow-sm">
+                                                {{ getCalificacionText(st.avgGrade, st.evalCount) }}
                                             </span>
                                             <span v-else class="text-slate-400 italic">Sin evaluar</span>
                                         </td>
@@ -642,7 +671,7 @@
 
                                     <!-- FILA DESPLEGABLE CON DETALLES DE INTENTOS EVALUADOS Y MATRIZ DE TPS -->
                                     <tr v-if="isExpanded(st.studentId)" class="bg-slate-50/80">
-                                        <td colspan="8" class="p-4 pl-12 border-b border-slate-200">
+                                        <td colspan="10" class="p-4 pl-12 border-b border-slate-200">
                                             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-inner space-y-4">
                                                 
                                                 <!-- MATRIZ DE TPS HABILITADOS PARA ESTE ALUMNO -->
@@ -1322,6 +1351,17 @@
             return 1; // Mal / 0.0 -> 1 pt
         }
 
+        // FUNCIÓN HELPER: OBTENER CALIFICACIÓN CONCEPTUAL CON PROMEDIO REDONDEADO
+        function getCalificacionText(avgGrade, evalCount) {
+            if (!evalCount || evalCount === 0 || avgGrade === null || avgGrade === undefined) {
+                return 'Sin evaluar';
+            }
+            const roundScore = Math.round(avgGrade);
+            if (roundScore <= 5) return `${roundScore} (en proceso)`;
+            if (roundScore <= 7) return `${roundScore} (suficiente)`;
+            return `${roundScore} (avanzado)`;
+        }
+
         createApp({
             setup() {
                 const activeTab = ref('evaluator');
@@ -1413,12 +1453,12 @@
                 const showFinishModal = ref(false);
                 const finishNotes = ref('');
 
-                // PLANILLA ACCORDION, FILTERS & SORTING STATE
+                // PLANILLA ACCORDION, FILTERS & SORTING STATE (POR DEFECTO 'default': CURSO -> GRUPO -> ALUMNO)
                 const historyFilterSearch = ref('');
                 const historyFilterCourse = ref('');
                 const historyFilterGroup = ref('');
                 const historyFilterStatus = ref('all'); // all, evaluated, not_evaluated
-                const sortColumn = ref('studentName');
+                const sortColumn = ref('default');
                 const sortOrder = ref('asc');
                 const expandedStudents = ref({});
 
@@ -1583,6 +1623,8 @@
 
                         const count = st.attempts.length;
                         const avgGrade = count > 0 ? parseFloat((sumPts / count).toFixed(1)) : 0;
+                        const calificacionStr = getCalificacionText(avgGrade, count);
+                        const roundedGrade = count > 0 ? Math.round(avgGrade) : 0;
 
                         return {
                             ...st,
@@ -1591,7 +1633,9 @@
                             regularCount: regular,
                             malCount: mal,
                             totalPoints: sumPts,
-                            avgGrade: avgGrade
+                            avgGrade: avgGrade,
+                            roundedGrade: roundedGrade,
+                            calificacion: calificacionStr
                         };
                     });
 
@@ -1611,14 +1655,31 @@
                         return matchesSearch && matchesCourse && matchesGroup && matchesStatus;
                     });
 
-                    // Ordenamiento dinámico en encabezados
+                    // ORDENAMIENTO: POR DEFECTO CURSO -> GRUPO -> ALUMNO (O DINÁMICO POR COLUMNA)
                     filtered.sort((a, b) => {
+                        if (sortColumn.value === 'default') {
+                            // 1. Curso (orden natural numérico/alfabético)
+                            const cComp = (a.course || '').localeCompare(b.course || '', undefined, { numeric: true, sensitivity: 'base' });
+                            if (cComp !== 0) return sortOrder.value === 'asc' ? cComp : -cComp;
+
+                            // 2. Grupo
+                            const gComp = (a.group || '').localeCompare(b.group || '', undefined, { numeric: true, sensitivity: 'base' });
+                            if (gComp !== 0) return sortOrder.value === 'asc' ? gComp : -gComp;
+
+                            // 3. Alumno / Nombre
+                            const nComp = (a.studentName || '').localeCompare(b.studentName || '');
+                            return sortOrder.value === 'asc' ? nComp : -nComp;
+                        }
+
                         let valA = a[sortColumn.value];
                         let valB = b[sortColumn.value];
 
                         if (sortColumn.value === 'latestDate') {
                             valA = valA ? new Date(valA).getTime() : 0;
                             valB = valB ? new Date(valB).getTime() : 0;
+                        } else if (sortColumn.value === 'calificacion') {
+                            valA = a.evalCount > 0 ? a.roundedGrade : -1;
+                            valB = b.evalCount > 0 ? b.roundedGrade : -1;
                         } else if (typeof valA === 'string') {
                             valA = (valA || '').toLowerCase();
                             valB = (valB || '').toLowerCase();
@@ -1732,7 +1793,9 @@
                 }
 
                 function sortIcon(col) {
-                    if (sortColumn.value !== col) return 'fa-solid fa-sort';
+                    if (sortColumn.value !== col && !(col === 'course' && sortColumn.value === 'default')) {
+                        return 'fa-solid fa-sort';
+                    }
                     return sortOrder.value === 'asc' ? 'fa-solid fa-sort-up text-brand-600' : 'fa-solid fa-sort-down text-brand-600';
                 }
 
@@ -1989,14 +2052,21 @@
                     return 'bg-rose-100 text-rose-800 border-rose-300';
                 }
 
-                // EXPORT PLANILLA COMPLETA A CSV (INCLUYE EVALUADOS Y NO EVALUADOS)
+                function calificacionBadgeClass(avgGrade) {
+                    const roundScore = Math.round(avgGrade);
+                    if (roundScore <= 5) return 'bg-rose-100 text-rose-800 border-rose-300';
+                    if (roundScore <= 7) return 'bg-amber-100 text-amber-800 border-amber-300';
+                    return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                }
+
+                // EXPORT PLANILLA COMPLETA A CSV (CON COLUMNAS CURSO, GRUPO Y CALIFICACIÓN)
                 function exportToCSV() {
                     if (groupedEvaluations.value.length === 0) {
                         showToast("No hay registros en la planilla.", "warning");
                         return;
                     }
 
-                    const headers = ["Curso", "Grupo", "Nombre y Apellido", "Estado Cierre", "Ultima Evaluacion", "Preguntas Evaluadas", "Bien (10pt)", "Regular (6pt)", "Mal (1pt)", "Nota Promedio (10)", "Condicion"];
+                    const headers = ["Curso", "Grupo", "Nombre y Apellido", "Estado Cierre", "Ultima Evaluacion", "Preguntas Evaluadas", "Bien (10pt)", "Regular (6pt)", "Mal (1pt)", "Nota Promedio (10)", "Calificacion"];
                     
                     const rows = groupedEvaluations.value.map(st => [
                         `"${st.course.replace(/"/g, '""')}"`,
@@ -2009,7 +2079,7 @@
                         st.regularCount,
                         st.malCount,
                         st.evalCount > 0 ? st.avgGrade : "Sin evaluar",
-                        st.evalCount > 0 ? (st.avgGrade >= 6.0 ? "Aprobado" : "Desaprobado") : "Sin evaluar"
+                        getCalificacionText(st.avgGrade, st.evalCount)
                     ]);
 
                     let csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
@@ -2024,7 +2094,7 @@
                     showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // EXPORTAR PDF ALUMNOS (COMPLETO TODOS LOS ALUMNOS)
+                // EXPORTAR PDF ALUMNOS (CON COLUMNAS INDEPENDIENTES Y CALIFICACIÓN)
                 function exportStudentsPDF(courseFilter = null) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
@@ -2038,7 +2108,7 @@
                     const subtitle = appSubtitle.value || 'Laboratorio de Física';
                     const reportTitle = courseFilter 
                         ? `Reporte de Calificaciones - Curso: ${courseFilter}` 
-                        : 'Reporte General Consolidado de Alumnos y Promedios';
+                        : 'Reporte General Consolidado de Alumnos y Calificaciones';
 
                     // Header
                     doc.setFontSize(18);
@@ -2069,12 +2139,12 @@
                         st.regularCount,
                         st.malCount,
                         st.evalCount > 0 ? st.avgGrade : 'Sin evaluar',
-                        st.evalCount > 0 ? (st.avgGrade >= 6.0 ? 'Aprobado' : 'Desaprobado') : 'Sin evaluar'
+                        getCalificacionText(st.avgGrade, st.evalCount)
                     ]);
 
                     doc.autoTable({
                         startY: 45,
-                        head: [['Estudiante', 'Curso', 'Grupo', 'Estado Cierre', 'Evaluadas', 'Bien', 'Reg', 'Mal', 'Promedio (1-10)', 'Condición']],
+                        head: [['Estudiante', 'Curso', 'Grupo', 'Estado Cierre', 'Evaluadas', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación']],
                         body: tableBody,
                         theme: 'striped',
                         headStyles: { fillColor: [2, 132, 199] },
@@ -2670,6 +2740,8 @@
                     getInitials,
                     formatDate,
                     gradeBadgeClass,
+                    calificacionBadgeClass,
+                    getCalificacionText,
                     toggleSort,
                     sortIcon,
                     toggleExpandStudent,
