@@ -1,1237 +1,1109 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluador - Laboratorio de Física</title>
-
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluador - Laboratorio de Física</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  
+  <!-- FontAwesome 6 Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- jsPDF & jsPDF AutoTable CDNs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+  
+  <style>
+    [v-cloak] { display: none !important; }
+    body { font-family: 'Inter', sans-serif; }
     
-    <!-- Vue 3 CDN -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    
-    <!-- FontAwesome Icons CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- jsPDF & jsPDF-AutoTable CDNs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            700: '#075985',
-                            900: '#0c4a6e',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <style>
-        [v-cloak] { display: none !important; }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-    </style>
+    /* Scrollbar personalizada */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <div id="app" v-cloak class="flex-1 flex flex-col min-h-screen">
+  <div id="app" v-cloak class="flex-1 flex flex-col min-h-screen max-w-[98%] 2xl:max-w-[1600px] w-full mx-auto p-3 sm:p-6">
+    
+    <!-- CABECERA PRINCIPAL SLATE/SKY CON PERSISTENCIA -->
+    <header class="bg-slate-900 text-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-5 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-sky-600 text-white p-3 rounded-xl shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-atom text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-sky-400 flex items-center gap-2">
+            Evaluador
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm font-medium">Laboratorio de Física</p>
+        </div>
+      </div>
+
+      <!-- NAVEGACIÓN PESTAÑAS (PILLS) -->
+      <nav class="flex flex-wrap justify-center gap-1.5 sm:gap-2 bg-slate-800/90 p-1.5 rounded-xl border border-slate-700/80 shadow-inner">
+        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
+          :class="['px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-150 flex items-center space-x-2', 
+                   activeTab === tab.id ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:text-white hover:bg-slate-700/60']">
+          <i :class="tab.icon"></i>
+          <span>{{ tab.label }}</span>
+        </button>
+      </nav>
+
+      <!-- INSIGNIA DE PERSISTENCIA ACTIVA -->
+      <div class="flex items-center gap-2 bg-slate-800 px-3.5 py-1.5 rounded-full border border-slate-700 text-xs font-semibold text-emerald-400 shadow-inner" title="Almacenamiento local activo">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+        <span>💾 Persistencia Activa ({{ totalSavedRecords }} reg)</span>
+      </div>
+    </header>
+
+    <!-- 1. PESTAÑA: TOMAR EXAMEN ORAL -->
+    <section v-if="activeTab === 'exam'" class="space-y-6">
+      
+      <!-- NOTIFICACIÓN DE FALTANTES -->
+      <div v-if="enabledTps.length === 0 || students.length === 0 || Object.keys(questionBank).length === 0" 
+           class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 text-center space-y-3">
+        <i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500"></i>
+        <h3 class="text-lg font-bold text-amber-900">Se requieren datos iniciales para evaluar</h3>
+        <p class="text-xs sm:text-sm text-amber-700 max-w-md mx-auto">Para tomar exámenes orales debes contar con alumnos cargados, banco de preguntas disponible y al menos un Trabajo Práctico habilitado.</p>
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+          <button @click="activeTab = 'students'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
+            <i class="fa-solid fa-users mr-1"></i> Cargar Alumnos
+          </button>
+          <button @click="activeTab = 'questions'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
+            <i class="fa-solid fa-book-bookmark mr-1"></i> Cargar Preguntas
+          </button>
+          <button @click="activeTab = 'settings'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
+            <i class="fa-solid fa-gears mr-1"></i> Habilitar TPs
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- HEADER NAVBAR CON PERSISTENCIA Y NAVEGACIÓN RESPONSIVA SLATE/SKY -->
-        <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
-            <div class="max-w-[98%] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex flex-col lg:flex-row items-center justify-between py-3 lg:py-0 lg:h-16 gap-3 lg:gap-0">
-                    
-                    <!-- Marca de la Aplicación e Insignia de Persistencia -->
-                    <div class="flex items-center justify-between w-full lg:w-auto space-x-4">
-                        <div class="flex items-center space-x-3">
-                            <div class="bg-sky-600 text-white p-2.5 rounded-xl shadow-md">
-                                <i class="fa-solid fa-atom text-xl"></i>
-                            </div>
-                            <div>
-                                <h1 class="font-extrabold text-lg leading-tight tracking-wide text-sky-400">{{ appTitle }}</h1>
-                                <p class="text-xs text-slate-400 font-medium">{{ appSubtitle }}</p>
-                            </div>
-                        </div>
+        <!-- PANEL LATERAL DE SELECCIÓN DE ALUMNO -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-4">
+          <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center space-x-2">
+            <i class="fa-solid fa-user-check text-sky-500"></i>
+            <span>1. Selección de Alumno</span>
+          </h2>
 
-                        <!-- Insignia Reactiva de Persistencia -->
-                        <div class="flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded-full text-xs font-semibold shadow-inner" title="Guardado automático en LocalStorage">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <i class="fa-solid fa-floppy-disk text-[11px]"></i>
-                            <span>💾 Persistencia Activa ({{ totalRecordsSaved }} reg)</span>
-                        </div>
-                    </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Filtrar por Curso</label>
+            <select v-model="selectedCourse" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none">
+              <option value="">-- Todos los Cursos --</option>
+              <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
 
-                    <!-- Navegación por pestañas -->
-                    <nav class="flex flex-wrap items-center justify-center lg:justify-end gap-1.5 w-full lg:w-auto">
-                        <button 
-                            @click="activeTab = 'exam'"
-                            :class="activeTab === 'exam' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-clipboard-question"></i>
-                            <span>Tomar Examen</span>
-                        </button>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Alumno a Evaluar</label>
+            <select v-model="selectedStudentId" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none">
+              <option value="">-- Seleccionar Alumno --</option>
+              <option v-for="s in filteredStudents" :key="s.id" :value="s.id">
+                [{{ s.curso }} - Grupo {{ s.grupo }}] {{ s.nombre }} ({{ getStudentClosureLabel(s) }})
+              </option>
+            </select>
+          </div>
 
-                        <button 
-                            @click="activeTab = 'sheet'"
-                            :class="activeTab === 'sheet' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-table-list"></i>
-                            <span>Planilla</span>
-                        </button>
-
-                        <button 
-                            @click="activeTab = 'stats'"
-                            :class="activeTab === 'stats' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-chart-column"></i>
-                            <span>Estadísticas</span>
-                        </button>
-
-                        <button 
-                            @click="activeTab = 'questions'"
-                            :class="activeTab === 'questions' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-book-bookmark"></i>
-                            <span>Preguntas & Resp.</span>
-                        </button>
-
-                        <button 
-                            @click="activeTab = 'students'"
-                            :class="activeTab === 'students' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-users"></i>
-                            <span>Alumnos</span>
-                        </button>
-
-                        <button 
-                            @click="activeTab = 'settings'"
-                            :class="activeTab === 'settings' ? 'bg-sky-600 text-white shadow-md font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
-                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
-                            <i class="fa-solid fa-gears"></i>
-                            <span>Ajustes / TPs</span>
-                        </button>
-                    </nav>
-                </div>
-            </div>
-        </header>
-
-        <!-- CONTENEDOR PRINCIPAL FLUIDO -->
-        <main class="flex-1 max-w-[98%] 2xl:max-w-[1600px] w-full mx-auto p-3 sm:p-6 lg:p-8">
-
-            <!-- SISTEMA DE TOASTS -->
-            <div class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none">
-                <transition-group enter-active-class="transition duration-300 ease-out transform translate-y-2 opacity-0"
-                                  enter-to-class="translate-y-0 opacity-100"
-                                  leave-active-class="transition duration-200 ease-in transform opacity-100"
-                                  leave-to-class="opacity-0">
-                    <div v-for="toast in toasts" :key="toast.id" 
-                         :class="{
-                            'bg-emerald-800 text-emerald-100 border-emerald-600': toast.type === 'success',
-                            'bg-amber-800 text-amber-100 border-amber-600': toast.type === 'warning',
-                            'bg-rose-800 text-rose-100 border-rose-600': toast.type === 'error',
-                            'bg-slate-800 text-slate-100 border-slate-600': toast.type === 'info'
-                         }"
-                         class="pointer-events-auto px-4 py-3 rounded-xl shadow-xl border flex items-center space-x-3 max-w-md">
-                        <i :class="toastIcon(toast.type)" class="text-lg"></i>
-                        <span class="text-sm font-medium">{{ toast.message }}</span>
-                    </div>
-                </transition-group>
+          <!-- FICHA DEL ALUMNO SELECCIONADO Y CIERRE DE ETAPA -->
+          <div v-if="selectedStudent" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-900 text-sm block">{{ selectedStudent.nombre }}</span>
+              <span class="text-xs text-slate-500 font-semibold">{{ selectedStudent.curso }} - Grp {{ selectedStudent.grupo }}</span>
             </div>
 
-            <!-- TAB 1: TOMAR EXAMEN -->
-            <section v-if="activeTab === 'exam'" class="space-y-6">
+            <div class="border-t border-slate-200 pt-3">
+              <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Estado Cierre de Evaluación</label>
+              <select v-model="selectedStudent.closureState" @change="saveState" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 outline-none">
+                <option value="Abierto">🔓 En Curso (Abierto)</option>
+                <option value="Parcial">📋 Cierre PARCIAL</option>
+                <option value="Final">🎓 Cierre FINAL</option>
+              </select>
+            </div>
+          </div>
 
-                <!-- CARTEL CUANDO FALTAN DATOS -->
-                <div v-if="enabledTps.length === 0 || students.length === 0 || Object.keys(questionBank).length === 0" 
-                     class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 text-center space-y-3">
-                    <i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500"></i>
-                    <h3 class="text-lg font-bold text-amber-900">Se requieren datos iniciales para evaluar</h3>
-                    <p class="text-xs text-amber-700 max-w-md mx-auto">Debes contar con alumnos cargados, preguntas en el banco y al menos un Trabajo Práctico habilitado.</p>
-                    <div class="flex flex-wrap justify-center gap-3 pt-2">
-                        <button @click="activeTab = 'students'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
-                            <i class="fa-solid fa-users mr-1"></i> Cargar Alumnos
-                        </button>
-                        <button @click="activeTab = 'questions'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
-                            <i class="fa-solid fa-book-bookmark mr-1"></i> Cargar Preguntas
-                        </button>
-                        <button @click="activeTab = 'settings'" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow">
-                            <i class="fa-solid fa-gears mr-1"></i> Habilitar TPs
-                        </button>
-                    </div>
-                </div>
+          <button @click="drawRandomQuestion" :disabled="!selectedStudentId"
+                  class="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow transition text-xs uppercase tracking-wider flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-dice text-sm"></i>
+            <span>Sortear Pregunta Oral</span>
+          </button>
+        </div>
 
-                <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    <!-- PANEL DE SELECCIÓN DE ESTUDIANTE -->
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
-                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center space-x-2">
-                            <i class="fa-solid fa-user-check text-sky-500"></i>
-                            <span>1. Selección del Estudiante</span>
-                        </h2>
+        <!-- TARJETA DE PREGUNTA Y RESPUESTA EN EXAMEN -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col justify-between min-h-[340px]">
+          
+          <div v-if="currentQuestion">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <span class="bg-sky-100 text-sky-800 font-extrabold text-xs px-3 py-1 rounded-full border border-sky-200">
+                TP Nº {{ currentQuestion.tpNum }} - {{ getTpName(currentQuestion.tpNum) }}
+              </span>
+              <span class="text-xs font-semibold text-slate-400">Pregunta ID #{{ currentQuestion.qId }}</span>
+            </div>
 
-                        <!-- Filtro por Curso -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Curso</label>
-                            <select v-model="selectedCourse" @change="onCourseOrGroupChange" class="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none">
-                                <option value="">-- Todos los Cursos --</option>
-                                <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
-                            </select>
-                        </div>
+            <div class="bg-slate-50 border-l-4 border-sky-500 p-5 rounded-r-xl mb-4 space-y-2">
+              <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Pregunta Oral Sorteada:</p>
+              <h3 class="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed">
+                "{{ currentQuestion.questionText }}"
+              </h3>
+            </div>
 
-                        <!-- Selección de Alumno -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Alumno</label>
-                            <select v-model="selectedStudentId" @change="loadStudentData" class="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl p-2.5 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-none">
-                                <option value="">-- Seleccionar Alumno --</option>
-                                <option v-for="s in filteredStudents" :key="s.id" :value="s.id">
-                                    [{{ s.curso }} - Grupo {{ s.grupo }}] {{ s.nombre }} ({{ getStudentClosureLabel(s) }})
-                                </option>
-                            </select>
-                        </div>
+            <!-- RESPUESTA REFERENCIA SUGERIDA -->
+            <div>
+              <button @click="showAnswer = !showAnswer" 
+                      class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                <i :class="showAnswer ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                <span>{{ showAnswer ? 'Ocultar Respuesta Sugerida' : 'Mostrar Respuesta Sugerida' }}</span>
+              </button>
 
-                        <!-- Tarjeta Alumno Seleccionado & Estado de Cierre de Etapa -->
-                        <div v-if="selectedStudent" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-slate-900 text-sm block">{{ selectedStudent.nombre }}</span>
-                                <span class="text-xs text-slate-500">{{ selectedStudent.curso }} - Grp {{ selectedStudent.grupo }}</span>
-                            </div>
+              <div v-if="showAnswer" class="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-slate-800 space-y-1">
+                <span class="font-bold text-amber-800 block text-[11px] uppercase"><i class="fa-solid fa-key mr-1"></i>Respuesta Sugerida de Referencia:</span>
+                <p class="italic leading-relaxed">{{ currentQuestion.answerText || 'Sin respuesta sugerida registrada.' }}</p>
+              </div>
+            </div>
+          </div>
 
-                            <div class="border-t border-slate-200 pt-2">
-                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Estado de Cierre de Evaluación</label>
-                                <select v-model="selectedStudent.closureState" @change="saveState" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800">
-                                    <option value="Abierto">🔓 En Curso (Abierto)</option>
-                                    <option value="Parcial">📋 Cierre PARCIAL</option>
-                                    <option value="Final">🎓 Cierre FINAL</option>
-                                </select>
-                            </div>
-                        </div>
+          <!-- ESTADO VACÍO -->
+          <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 text-center space-y-2">
+            <i class="fa-solid fa-circle-question text-4xl text-slate-300"></i>
+            <p class="font-medium text-xs sm:text-sm">Selecciona un alumno y presiona "Sortear Pregunta Oral"</p>
+          </div>
 
-                        <!-- Botón Sorteo Pregunta -->
-                        <button @click="drawRandomQuestion" :disabled="!selectedStudentId"
-                                class="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow transition text-xs uppercase tracking-wider flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-dice text-sm"></i>
-                            <span>Sortear Pregunta Oral</span>
-                        </button>
-                    </div>
+          <!-- BOTONES DE CALIFICACIÓN (Bien=10, Regular=6, Mal=1) -->
+          <div v-if="currentQuestion" class="mt-6 pt-4 border-t border-slate-100 space-y-2">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Calificar Respuesta:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button @click="gradeCurrent('Bien')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-thumbs-up text-base"></i>
+                <span>Bien (10 pts)</span>
+              </button>
 
-                    <!-- TARJETA DE PREGUNTA Y RESPUESTA -->
-                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between min-h-[340px]">
-                        
-                        <div v-if="currentQuestion">
-                            <div class="flex items-center justify-between gap-4 mb-4">
-                                <span class="bg-sky-100 text-sky-800 font-extrabold text-xs px-3 py-1 rounded-full">
-                                    TP Nº {{ currentQuestion.tpNum }} - {{ getTpName(currentQuestion.tpNum) }}
-                                </span>
-                                <span class="text-xs font-semibold text-slate-400">Pregunta ID #{{ currentQuestion.qId }}</span>
-                            </div>
+              <button @click="gradeCurrent('Regular')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-minus text-base"></i>
+                <span>Regular (6 pts)</span>
+              </button>
 
-                            <div class="bg-slate-50 border-l-4 border-sky-500 p-5 rounded-r-xl mb-4 space-y-2">
-                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Pregunta Oral Sorteada:</p>
-                                <h3 class="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed">
-                                    "{{ currentQuestion.questionText }}"
-                                </h3>
-                            </div>
+              <button @click="gradeCurrent('Mal')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-thumbs-down text-base"></i>
+                <span>Mal (1 pt)</span>
+              </button>
+            </div>
+          </div>
 
-                            <!-- Botón e Indicador de Respuesta Sugerida -->
-                            <div>
-                                <button @click="showAnswer = !showAnswer" 
-                                        class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-sm">
-                                    <i :class="showAnswer ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                                    <span>{{ showAnswer ? 'Ocultar Respuesta Sugerida' : 'Mostrar Respuesta Sugerida' }}</span>
-                                </button>
+        </div>
+      </div>
+    </section>
 
-                                <transition enter-active-class="transition duration-200 ease-out opacity-0 translate-y-1" enter-to-class="opacity-100 translate-y-0">
-                                    <div v-if="showAnswer" class="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-slate-800 space-y-1">
-                                        <span class="font-bold text-amber-800 block text-[11px] uppercase"><i class="fa-solid fa-key mr-1"></i>Respuesta Sugerida de Referencia:</span>
-                                        <p class="italic leading-relaxed">{{ currentQuestion.answerText || 'Sin respuesta sugerida registrada.' }}</p>
-                                    </div>
-                                </transition>
-                            </div>
-                        </div>
+    <!-- 2. PESTAÑA: PLANILLA GENERAL DE ALUMNOS Y CALIFICACIONES -->
+    <section v-if="activeTab === 'sheet'" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-5">
+      
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Planilla General de Alumnos y Calificaciones</h2>
+          <p class="text-xs text-slate-500">Muestra a todos los alumnos con nota promedio escala 1 a 10 (Bien=10, Regular=6, Mal=1) y detalle desplegable</p>
+        </div>
 
-                        <!-- Estado Vacío -->
-                        <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-400 py-12 text-center space-y-2">
-                            <i class="fa-solid fa-circle-question text-4xl text-slate-300"></i>
-                            <p class="font-medium text-xs sm:text-sm">Selecciona un alumno y presiona "Sortear Pregunta Oral"</p>
-                        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button @click="exportEvaluationsCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Exportar CSV Completo</span>
+          </button>
+          <button @click="exportEvaluationsPDF" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span>Exportar PDF Completo</span>
+          </button>
+          <button @click="clearEvaluations" :disabled="evaluations.length === 0" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 disabled:opacity-50">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Vaciar Planilla</span>
+          </button>
+        </div>
+      </div>
 
-                        <!-- BOTONES GRANDES DE CALIFICACIÓN (Bien=10, Regular=6, Mal=1) -->
-                        <div v-if="currentQuestion" class="mt-6 pt-4 border-t border-slate-100 space-y-2">
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Calificar Respuesta:</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                
-                                <button @click="gradeCurrent('Bien')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
-                                    <i class="fa-solid fa-thumbs-up text-base"></i>
-                                    <span>Bien (10 pts)</span>
-                                </button>
+      <!-- CONTROLES DE FILTRO -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Filtrar por Curso</label>
+          <select v-model="selectedCourse" class="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold outline-none focus:ring-2 focus:ring-sky-500">
+            <option value="">-- Todos los Cursos --</option>
+            <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
 
-                                <button @click="gradeCurrent('Regular')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
-                                    <i class="fa-solid fa-minus text-base"></i>
-                                    <span>Regular (6 pts)</span>
-                                </button>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Filtrar por Estado de Evaluación</label>
+          <select v-model="evalFilter" class="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold outline-none focus:ring-2 focus:ring-sky-500">
+            <option value="all">📌 Mostrar Todos los Alumnos</option>
+            <option value="evaluated">✅ Solo Evaluados</option>
+            <option value="not_evaluated">⏳ Solo No Evaluados</option>
+          </select>
+        </div>
 
-                                <button @click="gradeCurrent('Mal')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
-                                    <i class="fa-solid fa-thumbs-down text-base"></i>
-                                    <span>Mal (1 pt)</span>
-                                </button>
+        <div class="flex items-end justify-between sm:justify-end gap-2 pt-2 sm:pt-0">
+          <span class="text-xs font-bold text-slate-500">Mostrando: {{ filteredPlanillaStudents.length }} / {{ students.length }} alumnos</span>
+        </div>
+      </div>
 
-                            </div>
-                        </div>
+      <!-- TABLA PLANILLA CON ORDENAMIENTO EN ENCABEZADOS -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-900 text-white uppercase font-bold tracking-wider select-none">
+              <th class="p-3 w-8 text-center"></th>
+              
+              <th @click="toggleSort('curso')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
+                Curso / Grp <i :class="getSortIcon('curso')"></i>
+              </th>
 
-                    </div>
-                </div>
-            </section>
+              <th @click="toggleSort('nombre')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
+                Alumno <i :class="getSortIcon('nombre')"></i>
+              </th>
 
-            <!-- TAB 2: PLANILLA GENERAL (MOSTRAR TODOS LOS ALUMNOS CON FILTROS, ORDENAMIENTO Y ACORDEÓN) -->
-            <section v-if="activeTab === 'sheet'" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+              <th @click="toggleSort('lastExam')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
+                Última Eval. <i :class="getSortIcon('lastExam')"></i>
+              </th>
+
+              <th @click="toggleSort('qCount')" class="p-3 text-center cursor-pointer hover:bg-slate-800 transition">
+                Preguntas <i :class="getSortIcon('qCount')"></i>
+              </th>
+
+              <th @click="toggleSort('scoreAvg')" class="p-3 text-center cursor-pointer hover:bg-slate-800 transition">
+                Nota Promedio <i :class="getSortIcon('scoreAvg')"></i>
+              </th>
+
+              <th class="p-3 text-center">Estado Cierre</th>
+              <th class="p-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <template v-for="s in filteredPlanillaStudents" :key="s.id">
+              
+              <!-- FILA DE ALUMNO CON CLICK PARA DESPLEGAR -->
+              <tr class="hover:bg-sky-50/50 transition cursor-pointer" @click="toggleStudentExpand(s.id)">
+                <td class="p-3 text-center font-bold text-slate-400">
+                  <i :class="['fa-solid', expandedStudentIds.has(s.id) ? 'fa-chevron-down text-sky-600' : 'fa-chevron-right']"></i>
+                </td>
                 
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">Planilla General de Alumnos y Calificaciones</h2>
-                        <p class="text-xs text-slate-500">Muestra a todos los alumnos con promedio escala 1 a 10 (Bien=10, Regular=6, Mal=1) y detalle desplegable</p>
+                <td class="p-3 font-semibold text-slate-700 whitespace-nowrap">
+                  <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{{ s.curso }}</span>
+                  <span class="ml-1 text-slate-500 font-semibold">Grp {{ s.grupo }}</span>
+                </td>
+
+                <td class="p-3 font-extrabold text-slate-900 whitespace-nowrap text-sm">
+                  {{ s.nombre }}
+                </td>
+
+                <td class="p-3 text-xs text-slate-500 whitespace-nowrap">
+                  {{ getStudentStats(s.id).lastExam }}
+                </td>
+
+                <td class="p-3 text-center font-bold text-slate-700 whitespace-nowrap">
+                  {{ getStudentStats(s.id).qCount }}
+                </td>
+
+                <!-- NOTA PROMEDIO BADGE -->
+                <td class="p-3 text-center whitespace-nowrap">
+                  <span v-if="getStudentStats(s.id).qCount > 0" 
+                        :class="['px-2.5 py-1 rounded-full text-xs font-black shadow-sm border', getGradeBadgeClass(getStudentStats(s.id).scoreAvg)]">
+                    {{ getStudentStats(s.id).scoreAvg }} / 10
+                  </span>
+                  <span v-else class="text-xs text-slate-400 italic">Sin evaluar</span>
+                </td>
+
+                <!-- SELECTOR CIERRE DE ETAPA EN TABLA -->
+                <td class="p-3 text-center whitespace-nowrap" @click.stop>
+                  <select v-model="s.closureState" @change="saveState" class="text-xs font-bold border border-slate-300 rounded px-2 py-1 bg-white outline-none">
+                    <option value="Abierto">🔓 En Curso</option>
+                    <option value="Parcial">📋 PARCIAL</option>
+                    <option value="Final">🎓 FINAL</option>
+                  </select>
+                </td>
+
+                <!-- BOTÓN ACCIÓN EVALUAR DIRECTO -->
+                <td class="p-3 text-right whitespace-nowrap" @click.stop>
+                  <button @click="startExamForStudent(s)" class="bg-sky-600 hover:bg-sky-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow transition flex items-center space-x-1 inline-flex">
+                    <i class="fa-solid fa-bullseye"></i>
+                    <span>Evaluar</span>
+                  </button>
+                </td>
+              </tr>
+
+              <!-- ACORDEÓN DESPLEGABLE CON HISTORIAL Y TPS -->
+              <tr v-if="expandedStudentIds.has(s.id)" class="bg-slate-50/90">
+                <td colspan="8" class="p-4 space-y-4">
+                  
+                  <!-- ESTADO DE TPS HABILITADOS PARA ESTE ESTUDIANTE -->
+                  <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        Desglose de Trabajos Prácticos Evaluados:
+                      </h4>
+                      <button @click="startExamForStudent(s)" class="text-xs text-sky-600 hover:underline font-bold">
+                        🎯 Tomar Examen Oral a {{ s.nombre }}
+                      </button>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button @click="exportEvaluationsCSV" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-excel"></i>
-                            <span>Exportar CSV Completo</span>
-                        </button>
-                        <button @click="exportEvaluationsPDF" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i>
-                            <span>Exportar PDF Completo</span>
-                        </button>
-                        <button @click="clearEvaluations" :disabled="evaluations.length === 0" class="bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center space-x-1.5 disabled:opacity-50">
-                            <i class="fa-solid fa-trash-can"></i>
-                            <span>Vaciar Planilla</span>
-                        </button>
+                    <div class="flex flex-wrap gap-2">
+                      <span v-for="tp in enabledTps" :key="tp.num" 
+                            :class="['px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1 border',
+                                     getStudentTpStatus(s.id, tp.num).evaluated ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-200']">
+                        <span class="font-bold">TP {{ tp.num }}</span>
+                        <span v-if="getStudentTpStatus(s.id, tp.num).evaluated" class="font-extrabold text-emerald-700">
+                          (✓ {{ getStudentTpStatus(s.id, tp.num).count }} rtas)
+                        </span>
+                        <span v-else class="text-[10px]">✕ Sin eval</span>
+                      </span>
                     </div>
-                </div>
+                  </div>
 
-                <!-- CONTROLES DE FILTRO -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1">Filtrar por Curso</label>
-                        <select v-model="selectedCourse" class="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold outline-none focus:ring-2 focus:ring-sky-500">
-                            <option value="">-- Todos los Cursos --</option>
-                            <option v-for="c in courses" :key="c" :value="c">{{ c }}</option>
-                        </select>
+                  <!-- SUBTABLA CON HISTORIAL DE PREGUNTAS RESPONDIDAS -->
+                  <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="bg-slate-800 text-white text-xs font-bold px-3 py-2 flex justify-between items-center">
+                      <span>Historial de Respuestas Registradas ({{ getStudentStats(s.id).qCount }})</span>
                     </div>
 
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1">Filtrar por Estado de Evaluación</label>
-                        <select v-model="evalFilter" class="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold outline-none focus:ring-2 focus:ring-sky-500">
-                            <option value="all">📌 Mostrar Todos los Alumnos</option>
-                            <option value="evaluated">✅ Solo Evaluados</option>
-                            <option value="not_evaluated">⏳ Solo No Evaluados</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-end justify-between sm:justify-end gap-2 pt-2 sm:pt-0">
-                        <span class="text-xs font-bold text-slate-500">Mostrando: {{ filteredPlanillaStudents.length }} / {{ students.length }} alumnos</span>
-                    </div>
-                </div>
-
-                <!-- TABLA PLANILLA DE ALUMNOS CON ORDENAMIENTO EN ENCABEZADOS -->
-                <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="bg-slate-900 text-white uppercase font-bold tracking-wider select-none">
-                                <th class="p-3 w-8 text-center"></th>
-                                
-                                <th @click="toggleSort('curso')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
-                                    Curso / Grp <i :class="getSortIcon('curso')"></i>
-                                </th>
-
-                                <th @click="toggleSort('nombre')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
-                                    Alumno <i :class="getSortIcon('nombre')"></i>
-                                </th>
-
-                                <th @click="toggleSort('lastExam')" class="p-3 cursor-pointer hover:bg-slate-800 transition">
-                                    Última Eval. <i :class="getSortIcon('lastExam')"></i>
-                                </th>
-
-                                <th @click="toggleSort('qCount')" class="p-3 text-center cursor-pointer hover:bg-slate-800 transition">
-                                    Preguntas <i :class="getSortIcon('qCount')"></i>
-                                </th>
-
-                                <th @click="toggleSort('scoreAvg')" class="p-3 text-center cursor-pointer hover:bg-slate-800 transition">
-                                    Nota Promedio <i :class="getSortIcon('scoreAvg')"></i>
-                                </th>
-
-                                <th class="p-3 text-center">Estado Cierre</th>
-                                <th class="p-3 text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-200">
-                            <template v-for="s in filteredPlanillaStudents" :key="s.id">
-                                
-                                <!-- FILA DE RESUMEN DEL ALUMNO -->
-                                <tr class="hover:bg-slate-50 transition cursor-pointer" @click="toggleStudentExpand(s.id)">
-                                    <td class="p-3 text-center font-bold text-slate-400">
-                                        <i :class="['fa-solid', expandedStudentIds.has(s.id) ? 'fa-chevron-down text-sky-600' : 'fa-chevron-right']"></i>
-                                    </td>
-                                    
-                                    <td class="p-3 font-semibold text-slate-700 whitespace-nowrap">
-                                        <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{{ s.curso }}</span>
-                                        <span class="ml-1 text-slate-500 font-semibold">Grp {{ s.grupo }}</span>
-                                    </td>
-
-                                    <td class="p-3 font-extrabold text-slate-900 whitespace-nowrap text-sm">
-                                        {{ s.nombre }}
-                                    </td>
-
-                                    <td class="p-3 text-xs text-slate-500 whitespace-nowrap">
-                                        {{ getStudentStats(s.id).lastExam }}
-                                    </td>
-
-                                    <td class="p-3 text-center font-bold text-slate-700 whitespace-nowrap">
-                                        {{ getStudentStats(s.id).qCount }}
-                                    </td>
-
-                                    <!-- Nota Promedio Badge -->
-                                    <td class="p-3 text-center whitespace-nowrap">
-                                        <span v-if="getStudentStats(s.id).qCount > 0" 
-                                              :class="['px-2.5 py-1 rounded-full text-xs font-black shadow-sm border', getGradeBadgeClass(getStudentStats(s.id).scoreAvg)]">
-                                            {{ getStudentStats(s.id).scoreAvg }} / 10
-                                        </span>
-                                        <span v-else class="text-xs text-slate-400 italic">Sin evaluar</span>
-                                    </td>
-
-                                    <!-- Selector Inline Cierre de Etapa -->
-                                    <td class="p-3 text-center whitespace-nowrap" @click.stop>
-                                        <select v-model="s.closureState" @change="saveState" class="text-xs font-bold border border-slate-300 rounded px-2 py-1 bg-white outline-none">
-                                            <option value="Abierto">🔓 En Curso</option>
-                                            <option value="Parcial">📋 PARCIAL</option>
-                                            <option value="Final">🎓 FINAL</option>
-                                        </select>
-                                    </td>
-
-                                    <!-- Botón Directo Evaluar -->
-                                    <td class="p-3 text-right whitespace-nowrap" @click.stop>
-                                        <button @click="startExamForStudent(s)" class="bg-sky-600 hover:bg-sky-700 text-white px-2.5 py-1.2 rounded-lg text-xs font-bold shadow transition flex items-center space-x-1 inline-flex">
-                                            <i class="fa-solid fa-bullseye"></i>
-                                            <span>Evaluar</span>
-                                        </button>
-                                    </td>
-                                </tr>
-
-                                <!-- ACORDEÓN DESPLEGABLE CON DETALLE COMPLETO -->
-                                <tr v-if="expandedStudentIds.has(s.id)" class="bg-slate-50/90">
-                                    <td colspan="8" class="p-4 space-y-4">
-                                        
-                                        <!-- BARRA DE ESTADO DE TPS HABILITADOS -->
-                                        <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                                            <div class="flex items-center justify-between">
-                                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                                                    Desglose de Trabajos Prácticos Evaluados:
-                                                </h4>
-                                                <button @click="startExamForStudent(s)" class="text-xs text-sky-600 hover:underline font-bold">
-                                                    🎯 Tomar Examen Oral a {{ s.nombre }}
-                                                </button>
-                                            </div>
-
-                                            <div class="flex flex-wrap gap-2">
-                                                <span v-for="tp in enabledTps" :key="tp.num" 
-                                                      :class="['px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1 border',
-                                                               getStudentTpStatus(s.id, tp.num).evaluated ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-200']">
-                                                    <span class="font-bold">TP {{ tp.num }}</span>
-                                                    <span v-if="getStudentTpStatus(s.id, tp.num).evaluated" class="font-extrabold text-emerald-700">
-                                                        (✓ {{ getStudentTpStatus(s.id, tp.num).count }} rtas)
-                                                    </span>
-                                                    <span v-else class="text-[10px]">✕ Sin eval</span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <!-- TABLA CON HISTORIAL DE PREGUNTAS -->
-                                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                                            <div class="bg-slate-800 text-white text-xs font-bold px-3 py-2 flex justify-between items-center">
-                                                <span>Historial de Respuestas Registradas ({{ getStudentStats(s.id).qCount }})</span>
-                                            </div>
-
-                                            <table v-if="getStudentStats(s.id).qCount > 0" class="w-full text-xs text-left">
-                                                <thead>
-                                                    <tr class="bg-slate-100 border-b font-bold text-slate-600">
-                                                        <th class="p-2 w-36">Fecha / Hora</th>
-                                                        <th class="p-2 w-20">TP Nº</th>
-                                                        <th class="p-2">Pregunta Sorteada</th>
-                                                        <th class="p-2 text-center w-28">Calificación</th>
-                                                        <th class="p-2 text-right w-16">Acción</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-slate-100">
-                                                    <tr v-for="ev in getStudentEvaluations(s.id)" :key="ev.id" class="hover:bg-slate-50">
-                                                        <td class="p-2 text-slate-500 whitespace-nowrap">{{ ev.timestamp }}</td>
-                                                        <td class="p-2 font-bold text-sky-700 whitespace-nowrap">TP {{ ev.tpNum }}</td>
-                                                        <td class="p-2 text-slate-800">"{{ ev.questionText }}"</td>
-                                                        <td class="p-2 text-center whitespace-nowrap">
-                                                            <span :class="['px-2 py-0.5 rounded font-bold text-[11px]',
-                                                                ev.grade === 'Bien' ? 'bg-emerald-100 text-emerald-800' :
-                                                                ev.grade === 'Regular' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800']">
-                                                                {{ ev.grade }} ({{ ev.grade === 'Bien' ? 10 : ev.grade === 'Regular' ? 6 : 1 }} pts)
-                                                            </span>
-                                                        </td>
-                                                        <td class="p-2 text-right">
-                                                            <button @click="deleteEvaluation(ev.id)" title="Eliminar intento" class="text-rose-600 hover:underline font-bold">
-                                                                <i class="fa-solid fa-trash-can"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                            <div v-else class="p-4 text-center text-slate-400 italic text-xs">
-                                                Este alumno no posee calificaciones registradas. Haz clic en "Evaluar" para iniciar el examen oral.
-                                            </div>
-                                        </div>
-
-                                    </td>
-                                </tr>
-
-                            </template>
-
-                            <tr v-if="filteredPlanillaStudents.length === 0">
-                                <td colspan="8" class="p-8 text-center text-slate-400 text-sm">No se encontraron alumnos con los criterios seleccionados.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-            </section>
-
-            <!-- TAB 3: MATRIZ ESTADÍSTICA (SÓLO TPS HABILITADOS) -->
-            <section v-if="activeTab === 'stats'" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">Matriz Estadística Anónima</h2>
-                        <p class="text-xs text-slate-500">Frecuencias y porcentaje de aciertos agrupados exclusivamente por Trabajos Prácticos Habilitados</p>
-                    </div>
-                    
-                    <div class="flex gap-2">
-                        <button @click="exportMatrixCSV" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-excel"></i>
-                            <span>Exportar CSV</span>
-                        </button>
-                        <button @click="exportMatrixPDF" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-3 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i>
-                            <span>Exportar PDF</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="bg-slate-900 text-white uppercase font-bold tracking-wider">
-                                <th class="p-3">TP Nº</th>
-                                <th class="p-3">Título del Trabajo Práctico</th>
-                                <th class="p-3 text-center bg-emerald-800">Bien (10 pts)</th>
-                                <th class="p-3 text-center bg-amber-700">Regular (6 pts)</th>
-                                <th class="p-3 text-center bg-rose-800">Mal (1 pt)</th>
-                                <th class="p-3 text-center">Total Evaluados</th>
-                                <th class="p-3 text-center">% Aprobación</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr v-for="tp in enabledTps" :key="tp.num" class="hover:bg-slate-50 transition">
-                                <td class="p-3 font-bold text-sky-700">TP Nº {{ tp.num }}</td>
-                                <td class="p-3 font-semibold text-slate-800">{{ tp.name }}</td>
-                                <td class="p-3 text-center font-bold text-emerald-700 bg-emerald-50/50">{{ getTpStats(tp.num).bien }}</td>
-                                <td class="p-3 text-center font-bold text-amber-700 bg-amber-50/50">{{ getTpStats(tp.num).regular }}</td>
-                                <td class="p-3 text-center font-bold text-rose-700 bg-rose-50/50">{{ getTpStats(tp.num).mal }}</td>
-                                <td class="p-3 text-center font-bold text-slate-900">{{ getTpStats(tp.num).total }}</td>
-                                <td class="p-3 text-center font-black text-slate-800">
-                                    {{ getTpStats(tp.num).total > 0 ? getTpStats(tp.num).percent + '%' : '-' }}
-                                </td>
-                            </tr>
-                            <tr v-if="enabledTps.length === 0">
-                                <td colspan="7" class="p-8 text-center text-slate-400 text-sm">No hay Trabajos Prácticos habilitados.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- TAB 4: BANCO DE PREGUNTAS Y RESPUESTAS (CARGA CSV DUAL) -->
-            <section v-if="activeTab === 'questions'" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-6">
-                <div class="border-b border-slate-100 pb-4">
-                    <h2 class="text-lg font-bold text-slate-900">Banco de Preguntas y Respuestas</h2>
-                    <p class="text-xs text-slate-500">Carga masiva mediante CSV o edición de cuestionarios</p>
-                </div>
-
-                <!-- Carga Dual de CSV -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-700 uppercase">1. CSV Preguntas (numero_de_tp, id_pregunta, pregunta)</label>
-                        <input type="file" accept=".csv" @change="importQuestionsCSV" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-700 cursor-pointer"/>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="block text-xs font-bold text-slate-700 uppercase">2. CSV Respuestas (numero_de_tp, id_respuesta, respuesta)</label>
-                        <input type="file" accept=".csv" @change="importAnswersCSV" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"/>
-                    </div>
-                </div>
-
-                <!-- Acordeón de preguntas registradas -->
-                <div class="space-y-4">
-                    <div v-for="tp in tps" :key="tp.num" class="border border-slate-200 rounded-xl overflow-hidden">
-                        <div class="bg-slate-100 p-3 font-bold text-xs text-slate-800 flex justify-between items-center">
-                            <span>TP Nº {{ tp.num }}: {{ tp.name }}</span>
-                            <span class="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded font-bold text-[11px]">
-                                {{ (questionBank[tp.num] || []).length }} preguntas
+                    <table v-if="getStudentStats(s.id).qCount > 0" class="w-full text-xs text-left">
+                      <thead>
+                        <tr class="bg-slate-100 border-b font-bold text-slate-600">
+                          <th class="p-2 w-36">Fecha / Hora</th>
+                          <th class="p-2 w-20">TP Nº</th>
+                          <th class="p-2">Pregunta Sorteada</th>
+                          <th class="p-2 text-center w-28">Calificación</th>
+                          <th class="p-2 text-right w-16">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100">
+                        <tr v-for="ev in getStudentEvaluations(s.id)" :key="ev.id" class="hover:bg-slate-50">
+                          <td class="p-2 text-slate-500 whitespace-nowrap">{{ ev.timestamp }}</td>
+                          <td class="p-2 font-bold text-sky-700 whitespace-nowrap">TP {{ ev.tpNum }}</td>
+                          <td class="p-2 text-slate-800">"{{ ev.questionText }}"</td>
+                          <td class="p-2 text-center whitespace-nowrap">
+                            <span :class="['px-2 py-0.5 rounded font-bold text-[11px]',
+                              ev.grade === 'Bien' ? 'bg-emerald-100 text-emerald-800' :
+                              ev.grade === 'Regular' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800']">
+                              {{ ev.grade }} ({{ ev.grade === 'Bien' ? 10 : ev.grade === 'Regular' ? 6 : 1 }} pts)
                             </span>
-                        </div>
-                        <div v-if="questionBank[tp.num] && questionBank[tp.num].length > 0" class="divide-y divide-slate-100">
-                            <div v-for="q in questionBank[tp.num]" :key="q.id" class="p-3 text-xs space-y-1">
-                                <p class="font-bold text-slate-900">#{{ q.id }}. {{ q.questionText }}</p>
-                                <p class="text-slate-600 italic">Rta: {{ q.answerText || 'Sin respuesta sugerida.' }}</p>
-                            </div>
-                        </div>
-                        <div v-else class="p-3 text-xs text-slate-400 italic">Sin preguntas en este TP.</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 5: ALUMNOS (CARGA Y LISTADO) -->
-            <section v-if="activeTab === 'students'" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-6">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">Gestión de Alumnos</h2>
-                        <p class="text-xs text-slate-500">Lista oficial de estudiantes por curso y grupo</p>
-                    </div>
-                    <div>
-                        <label class="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white font-bold px-3 py-2 rounded-xl text-xs shadow inline-block transition">
-                            <i class="fa-solid fa-file-import mr-1"></i> Importar CSV Alumnos
-                            <input type="file" accept=".csv" @change="importStudentsCSV" class="hidden"/>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100 text-slate-600 uppercase font-bold border-b">
-                                <th class="p-3">Curso</th>
-                                <th class="p-3">Grupo</th>
-                                <th class="p-3">Nombre y Apellido</th>
-                                <th class="p-3 text-center">Estado Etapa</th>
-                                <th class="p-3 text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr v-for="s in students" :key="s.id" class="hover:bg-slate-50">
-                                <td class="p-3 font-semibold text-slate-700">{{ s.curso }}</td>
-                                <td class="p-3 font-semibold text-slate-700">{{ s.grupo }}</td>
-                                <td class="p-3 font-bold text-slate-900">{{ s.nombre }}</td>
-                                <td class="p-3 text-center font-bold">
-                                    {{ getStudentClosureLabel(s) }}
-                                </td>
-                                <td class="p-3 text-right">
-                                    <button @click="deleteStudent(s.id)" class="text-rose-600 hover:underline font-bold">Eliminar</button>
-                                </td>
-                            </tr>
-                            <tr v-if="students.length === 0">
-                                <td colspan="5" class="p-8 text-center text-slate-400 text-xs">No hay alumnos cargados. Importa un CSV con las columnas: curso, grupo, nombre_y_apellido.</td>
-                            </tr>
-                        </tbody>
+                          </td>
+                          <td class="p-2 text-right">
+                            <button @click="deleteEvaluation(ev.id)" title="Eliminar intento" class="text-rose-600 hover:underline font-bold">
+                              <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
                     </table>
-                </div>
-            </section>
-
-            <!-- TAB 6: AJUSTES Y CONFIGURACIÓN DE TPS -->
-            <section v-if="activeTab === 'settings'" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-6">
-                <div class="border-b border-slate-100 pb-4">
-                    <h2 class="text-lg font-bold text-slate-900">Configuración de Trabajos Prácticos (TPs)</h2>
-                    <p class="text-xs text-slate-500">Habilita o deshabilita los TPs evaluables en la rotación y estadísticas</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div v-for="tp in tps" :key="tp.num" class="flex items-center justify-between p-3 border rounded-xl bg-slate-50">
-                        <span class="text-xs font-bold text-slate-800">TP Nº {{ tp.num }}: {{ tp.name }}</span>
-                        <button @click="toggleTp(tp.num)" 
-                                :class="['px-3 py-1 rounded-lg text-xs font-bold transition', 
-                                         tp.enabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700']">
-                            {{ tp.enabled ? 'Habilitado' : 'Deshabilitado' }}
-                        </button>
+                    <div v-else class="p-4 text-center text-slate-400 italic text-xs">
+                      Este alumno no posee calificaciones registradas. Haz clic en "Evaluar" para iniciar el examen oral.
                     </div>
-                </div>
+                  </div>
 
-                <div class="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
-                    <button @click="exportJSONBackup" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Descargar Backup JSON</span>
-                    </button>
-                    <button @click="clearAllData" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                        <span>Reset de Fábrica</span>
-                    </button>
-                </div>
-            </section>
+                </td>
+              </tr>
 
-        </main>
+            </template>
 
-    </div>
+            <tr v-if="filteredPlanillaStudents.length === 0">
+              <td colspan="8" class="p-8 text-center text-slate-400 text-sm">No se encontraron alumnos con los criterios seleccionados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-    <!-- SCRIPT APLICACIÓN VUE 3 -->
-    <script>
-        const { createApp, ref, computed } = Vue;
+    </section>
 
-        function safeGetStorage(key, defaultValue) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : defaultValue;
-            } catch (e) {
-                console.warn('Storage read error:', e);
-                return defaultValue;
+    <!-- 3. PESTAÑA: MATRIZ ESTADÍSTICA (SOLO TPS HABILITADOS) -->
+    <section v-if="activeTab === 'matrix'" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-5">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Matriz Estadística Anónima</h2>
+          <p class="text-xs text-slate-500">Frecuencias y porcentaje de aciertos agrupados exclusivamente por Trabajos Prácticos Habilitados</p>
+        </div>
+        
+        <div class="flex gap-2">
+          <button @click="exportMatrixCSV" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Exportar CSV</span>
+          </button>
+          <button @click="exportMatrixPDF" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span>Exportar PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-900 text-white uppercase font-bold tracking-wider">
+              <th class="p-3">TP Nº</th>
+              <th class="p-3">Título del Trabajo Práctico</th>
+              <th class="p-3 text-center bg-emerald-800">Bien (10 pts)</th>
+              <th class="p-3 text-center bg-amber-700">Regular (6 pts)</th>
+              <th class="p-3 text-center bg-rose-800">Mal (1 pt)</th>
+              <th class="p-3 text-center">Total Evaluados</th>
+              <th class="p-3 text-center">% Aprobación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="tp in enabledTps" :key="tp.num" class="hover:bg-slate-50 transition">
+              <td class="p-3 font-bold text-sky-700">TP Nº {{ tp.num }}</td>
+              <td class="p-3 font-semibold text-slate-800">{{ tp.name }}</td>
+              <td class="p-3 text-center font-bold text-emerald-700 bg-emerald-50/50">{{ getTpStats(tp.num).bien }}</td>
+              <td class="p-3 text-center font-bold text-amber-700 bg-amber-50/50">{{ getTpStats(tp.num).regular }}</td>
+              <td class="p-3 text-center font-bold text-rose-700 bg-rose-50/50">{{ getTpStats(tp.num).mal }}</td>
+              <td class="p-3 text-center font-bold text-slate-900">{{ getTpStats(tp.num).total }}</td>
+              <td class="p-3 text-center font-black text-slate-800">
+                {{ getTpStats(tp.num).total > 0 ? getTpStats(tp.num).percent + '%' : '-' }}
+              </td>
+            </tr>
+            <tr v-if="enabledTps.length === 0">
+              <td colspan="7" class="p-8 text-center text-slate-400 text-sm">No hay Trabajos Prácticos habilitados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. PESTAÑA: BANCO DE PREGUNTAS Y RESPUESTAS -->
+    <section v-if="activeTab === 'questions'" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-6">
+      <div class="border-b border-slate-100 pb-4">
+        <h2 class="text-lg font-bold text-slate-900">Banco de Preguntas y Respuestas</h2>
+        <p class="text-xs text-slate-500">Carga masiva mediante CSV dual o visualización por TP</p>
+      </div>
+
+      <!-- CARGA DUAL CSV -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-700 uppercase">1. CSV Preguntas (numero_de_tp, id_pregunta, pregunta)</label>
+          <input type="file" accept=".csv" @change="importQuestionsCSV" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-700 cursor-pointer"/>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-700 uppercase">2. CSV Respuestas (numero_de_tp, id_respuesta, respuesta)</label>
+          <input type="file" accept=".csv" @change="importAnswersCSV" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"/>
+        </div>
+      </div>
+
+      <!-- ACORDEÓN DE PREGUNTAS POR TP -->
+      <div class="space-y-4">
+        <div v-for="tp in tps" :key="tp.num" class="border border-slate-200 rounded-xl overflow-hidden">
+          <div class="bg-slate-100 p-3 font-bold text-xs text-slate-800 flex justify-between items-center">
+            <span>TP Nº {{ tp.num }}: {{ tp.name }}</span>
+            <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold text-[11px]">
+              {{ (questionBank[tp.num] || []).length }} preguntas
+            </span>
+          </div>
+          <div v-if="questionBank[tp.num] && questionBank[tp.num].length > 0" class="divide-y divide-slate-100">
+            <div v-for="q in questionBank[tp.num]" :key="q.id" class="p-3 text-xs space-y-1">
+              <p class="font-bold text-slate-900">#{{ q.id }}. {{ q.questionText }}</p>
+              <p class="text-slate-600 italic">Rta: {{ q.answerText || 'Sin respuesta sugerida.' }}</p>
+            </div>
+          </div>
+          <div v-else class="p-3 text-xs text-slate-400 italic">Sin preguntas en este TP.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. PESTAÑA: GESTIÓN DE ALUMNOS -->
+    <section v-if="activeTab === 'students'" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-6">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Gestión de Alumnos</h2>
+          <p class="text-xs text-slate-500">Nómina oficial de estudiantes por curso y grupo</p>
+        </div>
+        <div>
+          <label class="cursor-pointer bg-sky-600 hover:bg-sky-700 text-white font-bold px-3 py-2 rounded-xl text-xs shadow inline-block transition">
+            <i class="fa-solid fa-file-import mr-1"></i> Importar CSV Alumnos
+            <input type="file" accept=".csv" @change="importStudentsCSV" class="hidden"/>
+          </label>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200 custom-scrollbar">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-600 uppercase font-bold border-b">
+              <th class="p-3">Curso</th>
+              <th class="p-3">Grupo</th>
+              <th class="p-3">Nombre y Apellido</th>
+              <th class="p-3 text-center">Estado Etapa</th>
+              <th class="p-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="s in students" :key="s.id" class="hover:bg-slate-50">
+              <td class="p-3 font-semibold text-slate-700">{{ s.curso }}</td>
+              <td class="p-3 font-semibold text-slate-700">{{ s.grupo }}</td>
+              <td class="p-3 font-bold text-slate-900">{{ s.nombre }}</td>
+              <td class="p-3 text-center font-bold">
+                {{ getStudentClosureLabel(s) }}
+              </td>
+              <td class="p-3 text-right">
+                <button @click="deleteStudent(s.id)" class="text-rose-600 hover:underline font-bold">Eliminar</button>
+              </td>
+            </tr>
+            <tr v-if="students.length === 0">
+              <td colspan="5" class="p-8 text-center text-slate-400 text-xs">No hay alumnos cargados. Importa un CSV con las columnas: curso, grupo, nombre_y_apellido.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. PESTAÑA: AJUSTES Y CONFIGURACIÓN DE TPS -->
+    <section v-if="activeTab === 'settings'" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 space-y-6">
+      <div class="border-b border-slate-100 pb-4">
+        <h2 class="text-lg font-bold text-slate-900">Configuración de Trabajos Prácticos (TPs)</h2>
+        <p class="text-xs text-slate-500">Habilita o deshabilita los TPs evaluables en la rotación y estadísticas</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div v-for="tp in tps" :key="tp.num" class="flex items-center justify-between p-3 border rounded-xl bg-slate-50">
+          <span class="text-xs font-bold text-slate-800">TP Nº {{ tp.num }}: {{ tp.name }}</span>
+          <button @click="toggleTp(tp.num)" 
+                  :class="['px-3 py-1 rounded-lg text-xs font-bold transition', 
+                           tp.enabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700']">
+            {{ tp.enabled ? 'Habilitado' : 'Deshabilitado' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-100 flex flex-wrap gap-3">
+        <button @click="exportJSONBackup" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-download"></i>
+          <span>Descargar Backup JSON</span>
+        </button>
+        <button @click="clearAllData" class="bg-rose-700 hover:bg-rose-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>Reset de Fábrica</span>
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- LÓGICA VUE 3 Y STORAGE SEGURO -->
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    function safeGetStorage(key, defaultValue) {
+      try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : defaultValue;
+      } catch (e) {
+        console.warn('SafeStorage read error:', e);
+        return defaultValue;
+      }
+    }
+
+    function safeSetStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn('SafeStorage save error:', e);
+      }
+    }
+
+    createApp({
+      setup() {
+        const activeTab = ref('sheet');
+        const tabs = [
+          { id: 'exam', label: 'Tomar Examen', icon: 'fa-solid fa-clipboard-question' },
+          { id: 'sheet', label: 'Planilla', icon: 'fa-solid fa-table-list' },
+          { id: 'matrix', label: 'Estadísticas', icon: 'fa-solid fa-chart-column' },
+          { id: 'questions', label: 'Preguntas & Resp.', icon: 'fa-solid fa-book-bookmark' },
+          { id: 'students', label: 'Alumnos', icon: 'fa-solid fa-users' },
+          { id: 'settings', label: 'Ajustes / TPs', icon: 'fa-solid fa-gears' }
+        ];
+
+        // LISTADO POR DEFECTO DE TPS (TP 5 Y 11 DESHABILITADOS POR DEFECTO)
+        const DEFAULT_TPS = [
+          { num: 1, name: 'Introducción a las Mediciones', enabled: true },
+          { num: 2, name: 'Razones y Proporciones', enabled: true },
+          { num: 3, name: 'Error en las Mediciones', enabled: true },
+          { num: 4, name: 'Medición de Fuerzas y Elasticidad', enabled: true },
+          { num: 5, name: 'Peso Específico y Densidad', enabled: false },
+          { num: 6, name: 'Paralelogramo de Fuerzas, Fuerzas Paralelas y Plano Inclinado', enabled: true },
+          { num: 7, name: 'Momento de una Fuerza, Palancas, Balanzas y Poleas', enabled: true },
+          { num: 8, name: 'Movimiento Rectilíneo Uniforme (MRU)', enabled: true },
+          { num: 9, name: 'Movimiento Rectilíneo Uniformemente Acelerado (MRUA)', enabled: true },
+          { num: 10, name: 'Caída Libre y Tiro Vertical', enabled: true },
+          { num: 11, name: 'Movimiento Circular Uniforme (MCU)', enabled: false },
+          { num: 12, name: 'Dinámica y Leyes de Newton', enabled: true },
+          { num: 13, name: 'Trabajo, Potencia y Conservación de la Energía', enabled: true },
+          { num: 14, name: 'Péndulo Ideal y Oscilaciones', enabled: true }
+        ];
+
+        const tps = ref(safeGetStorage('eval_tps', DEFAULT_TPS));
+        const students = ref(safeGetStorage('eval_students', []));
+        const questionBank = ref(safeGetStorage('eval_questionBank', {}));
+        const evaluations = ref(safeGetStorage('eval_evaluations', []));
+
+        // FILTROS Y ORDENAMIENTO EN PLANILLA
+        const evalFilter = ref('all'); // 'all', 'evaluated', 'not_evaluated'
+        const selectedCourse = ref('');
+        const sortColumn = ref('curso');
+        const sortOrder = ref('asc');
+        const expandedStudentIds = ref(new Set());
+
+        // EXAMEN
+        const selectedStudentId = ref('');
+        const currentQuestion = ref(null);
+        const showAnswer = ref(false);
+
+        const saveState = () => {
+          safeSetStorage('eval_tps', tps.value);
+          safeSetStorage('eval_students', students.value);
+          safeSetStorage('eval_questionBank', questionBank.value);
+          safeSetStorage('eval_evaluations', evaluations.value);
+        };
+
+        const totalSavedRecords = computed(() => {
+          let count = students.value.length + evaluations.value.length + tps.value.length;
+          Object.values(questionBank.value).forEach(qList => count += qList.length);
+          return count;
+        });
+
+        const enabledTps = computed(() => tps.value.filter(t => t.enabled));
+        
+        const courses = computed(() => {
+          const set = new Set(students.value.map(s => s.curso));
+          return Array.from(set).sort();
+        });
+
+        const filteredStudents = computed(() => {
+          if (!selectedCourse.value) return students.value;
+          return students.value.filter(s => s.curso === selectedCourse.value);
+        });
+
+        const selectedStudent = computed(() => {
+          return students.value.find(s => s.id === selectedStudentId.value) || null;
+        });
+
+        // ESTADÍSTICAS POR ALUMNO (BIEN=10, REGULAR=6, MAL=1)
+        const getStudentStats = (studentId) => {
+          const evals = evaluations.value.filter(e => e.studentId === studentId);
+          const qCount = evals.length;
+          if (qCount === 0) {
+            return { qCount: 0, scoreAvg: 0, lastExam: '-' };
+          }
+          let sum = 0;
+          evals.forEach(e => {
+            if (e.grade === 'Bien') sum += 10;
+            else if (e.grade === 'Regular') sum += 6;
+            else if (e.grade === 'Mal') sum += 1;
+          });
+          const scoreAvg = parseFloat((sum / qCount).toFixed(1));
+          const lastExam = evals[0].timestamp;
+          return { qCount, scoreAvg, lastExam };
+        };
+
+        const getStudentEvaluations = (studentId) => {
+          return evaluations.value.filter(e => e.studentId === studentId);
+        };
+
+        const getStudentTpStatus = (studentId, tpNum) => {
+          const evals = evaluations.value.filter(e => e.studentId === studentId && e.tpNum === tpNum);
+          return { evaluated: evals.length > 0, count: evals.length };
+        };
+
+        const filteredPlanillaStudents = computed(() => {
+          let list = [...students.value];
+
+          if (selectedCourse.value) {
+            list = list.filter(s => s.curso === selectedCourse.value);
+          }
+
+          if (evalFilter.value === 'evaluated') {
+            list = list.filter(s => getStudentStats(s.id).qCount > 0);
+          } else if (evalFilter.value === 'not_evaluated') {
+            list = list.filter(s => getStudentStats(s.id).qCount === 0);
+          }
+
+          list.sort((a, b) => {
+            let valA, valB;
+            const statsA = getStudentStats(a.id);
+            const statsB = getStudentStats(b.id);
+
+            if (sortColumn.value === 'curso') {
+              valA = `${a.curso} ${a.grupo}`;
+              valB = `${b.curso} ${b.grupo}`;
+            } else if (sortColumn.value === 'nombre') {
+              valA = a.nombre;
+              valB = b.nombre;
+            } else if (sortColumn.value === 'lastExam') {
+              valA = statsA.lastExam;
+              valB = statsB.lastExam;
+            } else if (sortColumn.value === 'qCount') {
+              valA = statsA.qCount;
+              valB = statsB.qCount;
+            } else if (sortColumn.value === 'scoreAvg') {
+              valA = statsA.scoreAvg;
+              valB = statsB.scoreAvg;
             }
-        }
 
-        function safeSetStorage(key, value) {
-            try {
-                localStorage.setItem(key, JSON.stringify(value));
-            } catch (e) {
-                console.warn('Storage set error:', e);
+            if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+            return 0;
+          });
+
+          return list;
+        });
+
+        const toggleSort = (col) => {
+          if (sortColumn.value === col) {
+            sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortColumn.value = col;
+            sortOrder.value = 'asc';
+          }
+        };
+
+        const getSortIcon = (col) => {
+          if (sortColumn.value !== col) return 'fa-solid fa-sort text-slate-500 text-[10px] ml-1';
+          return sortOrder.value === 'asc' ? 'fa-solid fa-sort-up text-sky-400 text-[10px] ml-1' : 'fa-solid fa-sort-down text-sky-400 text-[10px] ml-1';
+        };
+
+        const toggleStudentExpand = (studentId) => {
+          if (expandedStudentIds.value.has(studentId)) {
+            expandedStudentIds.value.delete(studentId);
+          } else {
+            expandedStudentIds.value.add(studentId);
+          }
+        };
+
+        const startExamForStudent = (student) => {
+          activeTab.value = 'exam';
+          selectedCourse.value = student.curso;
+          selectedStudentId.value = student.id;
+          drawRandomQuestion();
+        };
+
+        const getGradeBadgeClass = (score) => {
+          if (score >= 7) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+          if (score >= 4) return 'bg-amber-100 text-amber-800 border-amber-300';
+          return 'bg-rose-100 text-rose-800 border-rose-300';
+        };
+
+        const getStudentClosureLabel = (student) => {
+          const state = student.closureState || 'Abierto';
+          if (state === 'Final') return '🎓 FINAL';
+          if (state === 'Parcial') return '📋 PARCIAL';
+          return '🔓 En Curso';
+        };
+
+        const getTpName = (num) => {
+          const found = tps.value.find(t => t.num === num);
+          return found ? found.name : '';
+        };
+
+        const drawRandomQuestion = () => {
+          showAnswer.value = false;
+          const availableTpNums = enabledTps.value.map(t => t.num);
+          if (availableTpNums.length === 0) return;
+
+          const randomTpNum = availableTpNums[Math.floor(Math.random() * availableTpNums.length)];
+          const qList = questionBank.value[randomTpNum] || [];
+
+          if (qList.length === 0) {
+            alert(`No hay preguntas cargadas en el TP Nº ${randomTpNum}.`);
+            currentQuestion.value = null;
+            return;
+          }
+
+          const randomQ = qList[Math.floor(Math.random() * qList.length)];
+          currentQuestion.value = {
+            tpNum: randomTpNum,
+            qId: randomQ.id,
+            questionText: randomQ.questionText,
+            answerText: randomQ.answerText
+          };
+        };
+
+        const gradeCurrent = (grade) => {
+          if (!currentQuestion.value || !selectedStudentId.value) return;
+
+          const student = students.value.find(s => s.id === selectedStudentId.value);
+          if (!student) return;
+
+          const now = new Date();
+          const timestamp = now.toLocaleDateString('es-AR') + ' ' + now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+          evaluations.value.unshift({
+            id: Date.now(),
+            timestamp,
+            studentId: student.id,
+            studentName: student.nombre,
+            curso: student.curso,
+            grupo: student.grupo,
+            tpNum: currentQuestion.value.tpNum,
+            qId: currentQuestion.value.qId,
+            questionText: currentQuestion.value.questionText,
+            grade
+          });
+
+          saveState();
+          currentQuestion.value = null;
+          showAnswer.value = false;
+        };
+
+        const deleteEvaluation = (id) => {
+          evaluations.value = evaluations.value.filter(e => e.id !== id);
+          saveState();
+        };
+
+        const clearEvaluations = () => {
+          if (confirm('¿Vaciar toda la planilla de evaluaciones? Se restablecerán promedios.')) {
+            evaluations.value = [];
+            currentQuestion.value = null;
+            saveState();
+          }
+        };
+
+        const getTpStats = (tpNum) => {
+          const evals = evaluations.value.filter(e => e.tpNum === tpNum);
+          const bien = evals.filter(e => e.grade === 'Bien').length;
+          const regular = evals.filter(e => e.grade === 'Regular').length;
+          const mal = evals.filter(e => e.grade === 'Mal').length;
+          const total = evals.length;
+          const percent = total > 0 ? Math.round(((bien + regular * 0.5) / total) * 100) : 0;
+          return { bien, regular, mal, total, percent };
+        };
+
+        const parseCSV = (text) => {
+          const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+          if (lines.length === 0) return [];
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          
+          return lines.slice(1).map(line => {
+            const values = [];
+            let insideQuote = false;
+            let val = '';
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i];
+              if (char === '"') {
+                insideQuote = !insideQuote;
+              } else if (char === ',' && !insideQuote) {
+                values.push(val.trim().replace(/^"|"$/g, ''));
+                val = '';
+              } else {
+                val += char;
+              }
             }
-        }
+            values.push(val.trim().replace(/^"|"$/g, ''));
+            
+            const row = {};
+            headers.forEach((h, idx) => {
+              row[h] = values[idx] || '';
+            });
+            return row;
+          });
+        };
 
-        createApp({
-            setup() {
-                const activeTab = ref('sheet');
-                const appTitle = ref('Evaluador');
-                const appSubtitle = ref('Laboratorio de Física');
+        const importStudentsCSV = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const parsed = parseCSV(evt.target.result);
+            const newStudents = parsed.map((r, i) => ({
+              id: Date.now() + i,
+              curso: r.curso || 'General',
+              grupo: r.grupo || 'A',
+              nombre: r.nombre_y_apellido || r.nombre || 'Sin Nombre',
+              closureState: 'Abierto'
+            }));
+            students.value = newStudents;
+            saveState();
+            alert(`Se importaron ${newStudents.length} alumnos correctamente.`);
+          };
+          reader.readAsText(file);
+        };
 
-                const DEFAULT_TPS = [
-                    { num: 1, name: 'Introducción a las Mediciones', enabled: true },
-                    { num: 2, name: 'Razones y Proporciones', enabled: true },
-                    { num: 3, name: 'Error en las Mediciones', enabled: true },
-                    { num: 4, name: 'Medición de Fuerzas y Elasticidad', enabled: true },
-                    { num: 5, name: 'Peso Específico y Densidad', enabled: false },
-                    { num: 6, name: 'Paralelogramo de Fuerzas, Fuerzas Paralelas y Plano Inclinado', enabled: true },
-                    { num: 7, name: 'Momento de una Fuerza, Palancas, Balanzas y Poleas', enabled: true },
-                    { num: 8, name: 'Movimiento Rectilíneo Uniforme (MRU)', enabled: true },
-                    { num: 9, name: 'Movimiento Rectilíneo Uniformemente Acelerado (MRUA)', enabled: true },
-                    { num: 10, name: 'Caída Libre y Tiro Vertical', enabled: true },
-                    { num: 11, name: 'Movimiento Circular Uniforme (MCU)', enabled: false },
-                    { num: 12, name: 'Dinámica y Leyes de Newton', enabled: true },
-                    { num: 13, name: 'Trabajo, Potencia y Conservación de la Energía', enabled: true },
-                    { num: 14, name: 'Péndulo Ideal y Oscilaciones', enabled: true }
-                ];
-
-                const tps = ref(safeGetStorage('eval_tps', DEFAULT_TPS));
-                const students = ref(safeGetStorage('eval_students', []));
-                const questionBank = ref(safeGetStorage('eval_questionBank', {}));
-                const evaluations = ref(safeGetStorage('eval_evaluations', []));
-
-                // FILTROS Y ORDENAMIENTO EN PLANILLA
-                const evalFilter = ref('all'); // all, evaluated, not_evaluated
-                const selectedCourse = ref('');
-                const sortColumn = ref('curso');
-                const sortOrder = ref('asc');
-                const expandedStudentIds = ref(new Set());
-
-                // EXAMEN
-                const selectedStudentId = ref('');
-                const currentQuestion = ref(null);
-                const showAnswer = ref(false);
-
-                // TOASTS
-                const toasts = ref([]);
-                function showToast(message, type = 'info') {
-                    const id = Date.now() + Math.random();
-                    toasts.value.push({ id, message, type });
-                    setTimeout(() => {
-                        toasts.value = toasts.value.filter(t => t.id !== id);
-                    }, 3500);
+        const importQuestionsCSV = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const parsed = parseCSV(evt.target.result);
+            const bank = { ...questionBank.value };
+            parsed.forEach(r => {
+              const tpNum = parseInt(r.numero_de_tp);
+              const qId = parseInt(r.id_pregunta);
+              const qText = r.pregunta;
+              if (tpNum && qText) {
+                if (!bank[tpNum]) bank[tpNum] = [];
+                const existing = bank[tpNum].find(q => q.id === qId);
+                if (existing) {
+                  existing.questionText = qText;
+                } else {
+                  bank[tpNum].push({ id: qId, questionText: qText, answerText: '' });
                 }
+              }
+            });
+            questionBank.value = bank;
+            saveState();
+            alert('Preguntas importadas con éxito.');
+          };
+          reader.readAsText(file);
+        };
 
-                function toastIcon(type) {
-                    switch(type) {
-                        case 'success': return 'fa-solid fa-circle-check';
-                        case 'warning': return 'fa-solid fa-triangle-exclamation';
-                        case 'error': return 'fa-solid fa-circle-xmark';
-                        default: return 'fa-solid fa-circle-info';
-                    }
-                }
+        const importAnswersCSV = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const parsed = parseCSV(evt.target.result);
+            const bank = { ...questionBank.value };
+            parsed.forEach(r => {
+              const tpNum = parseInt(r.numero_de_tp);
+              const rId = parseInt(r.id_respuesta);
+              const rText = r.respuesta;
+              if (tpNum && bank[tpNum]) {
+                const targetQ = bank[tpNum].find(q => q.id === rId);
+                if (targetQ) targetQ.answerText = rText;
+              }
+            });
+            questionBank.value = bank;
+            saveState();
+            alert('Respuestas importadas con éxito.');
+          };
+          reader.readAsText(file);
+        };
 
-                const saveState = () => {
-                    safeSetStorage('eval_tps', tps.value);
-                    safeSetStorage('eval_students', students.value);
-                    safeSetStorage('eval_questionBank', questionBank.value);
-                    safeSetStorage('eval_evaluations', evaluations.value);
-                };
+        const toggleTp = (num) => {
+          const tp = tps.value.find(t => t.num === num);
+          if (tp) {
+            tp.enabled = !tp.enabled;
+            saveState();
+          }
+        };
 
-                const totalRecordsSaved = computed(() => {
-                    let count = students.value.length + evaluations.value.length + tps.value.length;
-                    Object.values(questionBank.value).forEach(qList => count += qList.length);
-                    return count;
-                });
+        const downloadFile = (content, filename, type) => {
+          const blob = new Blob([content], { type });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          link.click();
+        };
 
-                const enabledTps = computed(() => tps.value.filter(t => t.enabled));
-                
-                const courses = computed(() => {
-                    const set = new Set(students.value.map(s => s.curso));
-                    return Array.from(set).sort();
-                });
+        const exportEvaluationsCSV = () => {
+          let csv = 'Curso,Grupo,Alumno,Estado_Etapa,Preguntas_Evaluadas,Nota_Promedio,Ultima_Evaluacion\n';
+          filteredPlanillaStudents.value.forEach(s => {
+            const stats = getStudentStats(s.id);
+            const closure = s.closureState || 'Abierto';
+            const avgStr = stats.qCount > 0 ? stats.scoreAvg : 'Sin evaluar';
+            csv += `"${s.curso}","${s.grupo}","${s.nombre}","${closure}",${stats.qCount},"${avgStr}","${stats.lastExam}"\n`;
+          });
+          downloadFile(csv, 'planilla_general_alumnos.csv', 'text/csv');
+        };
 
-                const filteredStudents = computed(() => {
-                    if (!selectedCourse.value) return students.value;
-                    return students.value.filter(s => s.curso === selectedCourse.value);
-                });
+        const exportMatrixCSV = () => {
+          let csv = 'TP_Num,Trabajo_Practico,Bien_10,Regular_6,Mal_1,Total_Evaluados,Porcentaje_Aprobacion\n';
+          enabledTps.value.forEach(tp => {
+            const stats = getTpStats(tp.num);
+            csv += `${tp.num},"${tp.name.replace(/"/g, '""')}",${stats.bien},${stats.regular},${stats.mal},${stats.total},${stats.percent}%\n`;
+          });
+          downloadFile(csv, 'matriz_estadistica.csv', 'text/csv');
+        };
 
-                const selectedStudent = computed(() => {
-                    return students.value.find(s => s.id === selectedStudentId.value) || null;
-                });
+        const exportEvaluationsPDF = () => {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          doc.text('Planilla General de Alumnos y Calificaciones - Física', 14, 15);
+          
+          const rows = filteredPlanillaStudents.value.map(s => {
+            const stats = getStudentStats(s.id);
+            const closure = s.closureState || 'Abierto';
+            const avgStr = stats.qCount > 0 ? `${stats.scoreAvg} / 10` : 'Sin evaluar';
+            return [s.curso, s.grupo, s.nombre, closure, stats.qCount, avgStr, stats.lastExam];
+          });
 
-                // CÁLCULO DE PUNTOS: BIEN=10, REGULAR=6, MAL=1
-                const getStudentStats = (studentId) => {
-                    const evals = evaluations.value.filter(e => e.studentId === studentId);
-                    const qCount = evals.length;
-                    if (qCount === 0) {
-                        return { qCount: 0, scoreAvg: 0, lastExam: '-' };
-                    }
-                    let sum = 0;
-                    evals.forEach(e => {
-                        if (e.grade === 'Bien') sum += 10;
-                        else if (e.grade === 'Regular') sum += 6;
-                        else if (e.grade === 'Mal') sum += 1;
-                    });
-                    const scoreAvg = parseFloat((sum / qCount).toFixed(1));
-                    const lastExam = evals[0].timestamp;
-                    return { qCount, scoreAvg, lastExam };
-                };
+          doc.autoTable({
+            startY: 22,
+            head: [['Curso', 'Grp', 'Alumno', 'Estado', 'Rtas', 'Nota Promedio', 'Última Eval']],
+            body: rows,
+            styles: { fontSize: 8 }
+          });
 
-                const getStudentEvaluations = (studentId) => {
-                    return evaluations.value.filter(e => e.studentId === studentId);
-                };
+          doc.save('planilla_alumnos_notas.pdf');
+        };
 
-                const getStudentTpStatus = (studentId, tpNum) => {
-                    const evals = evaluations.value.filter(e => e.studentId === studentId && e.tpNum === tpNum);
-                    return { evaluated: evals.length > 0, count: evals.length };
-                };
+        const exportMatrixPDF = () => {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          doc.text('Matriz Estadística Anónima - Laboratorio de Física', 14, 15);
 
-                const filteredPlanillaStudents = computed(() => {
-                    let list = [...students.value];
+          const rows = enabledTps.value.map(tp => {
+            const s = getTpStats(tp.num);
+            return [`TP Nº ${tp.num}`, tp.name, s.bien, s.regular, s.mal, s.total, s.percent + '%'];
+          });
 
-                    if (selectedCourse.value) {
-                        list = list.filter(s => s.curso === selectedCourse.value);
-                    }
+          doc.autoTable({
+            startY: 22,
+            head: [['TP', 'Nombre', 'Bien (10)', 'Reg (6)', 'Mal (1)', 'Total', '% Aprob']],
+            body: rows,
+            styles: { fontSize: 8 }
+          });
 
-                    if (evalFilter.value === 'evaluated') {
-                        list = list.filter(s => getStudentStats(s.id).qCount > 0);
-                    } else if (evalFilter.value === 'not_evaluated') {
-                        list = list.filter(s => getStudentStats(s.id).qCount === 0);
-                    }
+          doc.save('matriz_estadistica.pdf');
+        };
 
-                    list.sort((a, b) => {
-                        let valA, valB;
-                        const statsA = getStudentStats(a.id);
-                        const statsB = getStudentStats(b.id);
+        const exportJSONBackup = () => {
+          const backup = {
+            tps: tps.value,
+            students: students.value,
+            questionBank: questionBank.value,
+            evaluations: evaluations.value
+          };
+          downloadFile(JSON.stringify(backup, null, 2), 'evaluador_backup.json', 'application/json');
+        };
 
-                        if (sortColumn.value === 'curso') {
-                            valA = `${a.curso} ${a.grupo}`;
-                            valB = `${b.curso} ${b.grupo}`;
-                        } else if (sortColumn.value === 'nombre') {
-                            valA = a.nombre;
-                            valB = b.nombre;
-                        } else if (sortColumn.value === 'lastExam') {
-                            valA = statsA.lastExam;
-                            valB = statsB.lastExam;
-                        } else if (sortColumn.value === 'qCount') {
-                            valA = statsA.qCount;
-                            valB = statsB.qCount;
-                        } else if (sortColumn.value === 'scoreAvg') {
-                            valA = statsA.scoreAvg;
-                            valB = statsB.scoreAvg;
-                        }
+        const clearAllData = () => {
+          if (confirm('⚠️ ¿Borrar TODOS los datos de la aplicación? Esto restablecerá los valores de fábrica.')) {
+            localStorage.clear();
+            location.reload();
+          }
+        };
 
-                        if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-                        if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-                        return 0;
-                    });
+        const deleteStudent = (id) => {
+          students.value = students.value.filter(s => s.id !== id);
+          saveState();
+        };
 
-                    return list;
-                });
-
-                const toggleSort = (col) => {
-                    if (sortColumn.value === col) {
-                        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        sortColumn.value = col;
-                        sortOrder.value = 'asc';
-                    }
-                };
-
-                const getSortIcon = (col) => {
-                    if (sortColumn.value !== col) return 'fa-solid fa-sort text-slate-500 text-[10px] ml-1';
-                    return sortOrder.value === 'asc' ? 'fa-solid fa-sort-up text-sky-400 text-[10px] ml-1' : 'fa-solid fa-sort-down text-sky-400 text-[10px] ml-1';
-                };
-
-                const toggleStudentExpand = (studentId) => {
-                    if (expandedStudentIds.value.has(studentId)) {
-                        expandedStudentIds.value.delete(studentId);
-                    } else {
-                        expandedStudentIds.value.add(studentId);
-                    }
-                };
-
-                const startExamForStudent = (student) => {
-                    activeTab.value = 'exam';
-                    selectedCourse.value = student.curso;
-                    selectedStudentId.value = student.id;
-                    drawRandomQuestion();
-                };
-
-                const getGradeBadgeClass = (score) => {
-                    if (score >= 7) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-                    if (score >= 4) return 'bg-amber-100 text-amber-800 border-amber-300';
-                    return 'bg-rose-100 text-rose-800 border-rose-300';
-                };
-
-                const getStudentClosureLabel = (student) => {
-                    const state = student.closureState || 'Abierto';
-                    if (state === 'Final') return '🎓 FINAL';
-                    if (state === 'Parcial') return '📋 PARCIAL';
-                    return '🔓 En Curso';
-                };
-
-                const getTpName = (num) => {
-                    const found = tps.value.find(t => t.num === num);
-                    return found ? found.name : '';
-                };
-
-                const onCourseOrGroupChange = () => {
-                    selectedStudentId.value = '';
-                    currentQuestion.value = null;
-                    showAnswer.value = false;
-                };
-
-                const loadStudentData = () => {
-                    showAnswer.value = false;
-                    drawRandomQuestion();
-                };
-
-                const drawRandomQuestion = () => {
-                    showAnswer.value = false;
-                    const availableTpNums = enabledTps.value.map(t => t.num);
-                    if (availableTpNums.length === 0) return;
-
-                    const randomTpNum = availableTpNums[Math.floor(Math.random() * availableTpNums.length)];
-                    const qList = questionBank.value[randomTpNum] || [];
-
-                    if (qList.length === 0) {
-                        showToast(`No hay preguntas cargadas en el TP Nº ${randomTpNum}.`, 'warning');
-                        currentQuestion.value = null;
-                        return;
-                    }
-
-                    const randomQ = qList[Math.floor(Math.random() * qList.length)];
-                    currentQuestion.value = {
-                        tpNum: randomTpNum,
-                        qId: randomQ.id,
-                        questionText: randomQ.questionText,
-                        answerText: randomQ.answerText
-                    };
-                };
-
-                const gradeCurrent = (grade) => {
-                    if (!currentQuestion.value || !selectedStudentId.value) return;
-
-                    const student = students.value.find(s => s.id === selectedStudentId.value);
-                    if (!student) return;
-
-                    const now = new Date();
-                    const timestamp = now.toLocaleDateString('es-AR') + ' ' + now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-
-                    evaluations.value.unshift({
-                        id: Date.now(),
-                        timestamp,
-                        studentId: student.id,
-                        studentName: student.nombre,
-                        curso: student.curso,
-                        grupo: student.grupo,
-                        tpNum: currentQuestion.value.tpNum,
-                        qId: currentQuestion.value.qId,
-                        questionText: currentQuestion.value.questionText,
-                        grade
-                    });
-
-                    saveState();
-                    showToast(`Calificación ${grade} registrada para ${student.nombre}`, 'success');
-                    currentQuestion.value = null;
-                    showAnswer.value = false;
-                };
-
-                const deleteEvaluation = (id) => {
-                    evaluations.value = evaluations.value.filter(e => e.id !== id);
-                    saveState();
-                    showToast('Intento eliminado.', 'info');
-                };
-
-                const clearEvaluations = () => {
-                    if (confirm('¿Vaciar toda la planilla de evaluaciones? Se restablecerán promedios.')) {
-                        evaluations.value = [];
-                        currentQuestion.value = null;
-                        saveState();
-                        showToast('Planilla vaciada.', 'info');
-                    }
-                };
-
-                const getTpStats = (tpNum) => {
-                    const evals = evaluations.value.filter(e => e.tpNum === tpNum);
-                    const bien = evals.filter(e => e.grade === 'Bien').length;
-                    const regular = evals.filter(e => e.grade === 'Regular').length;
-                    const mal = evals.filter(e => e.grade === 'Mal').length;
-                    const total = evals.length;
-                    const percent = total > 0 ? Math.round(((bien + regular * 0.5) / total) * 100) : 0;
-                    return { bien, regular, mal, total, percent };
-                };
-
-                const parseCSV = (text) => {
-                    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-                    if (lines.length === 0) return [];
-                    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-                    
-                    return lines.slice(1).map(line => {
-                        const values = [];
-                        let insideQuote = false;
-                        let val = '';
-                        for (let i = 0; i < line.length; i++) {
-                            const char = line[i];
-                            if (char === '"') {
-                                insideQuote = !insideQuote;
-                            } else if (char === ',' && !insideQuote) {
-                                values.push(val.trim().replace(/^"|"$/g, ''));
-                                val = '';
-                            } else {
-                                val += char;
-                            }
-                        }
-                        values.push(val.trim().replace(/^"|"$/g, ''));
-                        
-                        const row = {};
-                        headers.forEach((h, idx) => {
-                            row[h] = values[idx] || '';
-                        });
-                        return row;
-                    });
-                };
-
-                const importStudentsCSV = (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                        const parsed = parseCSV(evt.target.result);
-                        const newStudents = parsed.map((r, i) => ({
-                            id: Date.now() + i,
-                            curso: r.curso || 'General',
-                            grupo: r.grupo || 'A',
-                            nombre: r.nombre_y_apellido || r.nombre || 'Sin Nombre',
-                            closureState: 'Abierto'
-                        }));
-                        students.value = newStudents;
-                        saveState();
-                        showToast(`Se importaron ${newStudents.length} alumnos.`, 'success');
-                    };
-                    reader.readAsText(file);
-                };
-
-                const importQuestionsCSV = (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                        const parsed = parseCSV(evt.target.result);
-                        const bank = { ...questionBank.value };
-                        parsed.forEach(r => {
-                            const tpNum = parseInt(r.numero_de_tp);
-                            const qId = parseInt(r.id_pregunta);
-                            const qText = r.pregunta;
-                            if (tpNum && qText) {
-                                if (!bank[tpNum]) bank[tpNum] = [];
-                                const existing = bank[tpNum].find(q => q.id === qId);
-                                if (existing) {
-                                    existing.questionText = qText;
-                                } else {
-                                    bank[tpNum].push({ id: qId, questionText: qText, answerText: '' });
-                                }
-                            }
-                        });
-                        questionBank.value = bank;
-                        saveState();
-                        showToast('Preguntas importadas con éxito.', 'success');
-                    };
-                    reader.readAsText(file);
-                };
-
-                const importAnswersCSV = (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                        const parsed = parseCSV(evt.target.result);
-                        const bank = { ...questionBank.value };
-                        parsed.forEach(r => {
-                            const tpNum = parseInt(r.numero_de_tp);
-                            const rId = parseInt(r.id_respuesta);
-                            const rText = r.respuesta;
-                            if (tpNum && bank[tpNum]) {
-                                const targetQ = bank[tpNum].find(q => q.id === rId);
-                                if (targetQ) targetQ.answerText = rText;
-                            }
-                        });
-                        questionBank.value = bank;
-                        saveState();
-                        showToast('Respuestas importadas con éxito.', 'success');
-                    };
-                    reader.readAsText(file);
-                };
-
-                const toggleTp = (num) => {
-                    const tp = tps.value.find(t => t.num === num);
-                    if (tp) {
-                        tp.enabled = !tp.enabled;
-                        saveState();
-                    }
-                };
-
-                const downloadFile = (content, filename, type) => {
-                    const blob = new Blob([content], { type });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = filename;
-                    link.click();
-                };
-
-                const exportEvaluationsCSV = () => {
-                    let csv = 'Curso,Grupo,Alumno,Estado_Etapa,Preguntas_Evaluadas,Nota_Promedio,Ultima_Evaluacion\n';
-                    filteredPlanillaStudents.value.forEach(s => {
-                        const stats = getStudentStats(s.id);
-                        const closure = s.closureState || 'Abierto';
-                        const avgStr = stats.qCount > 0 ? stats.scoreAvg : 'Sin evaluar';
-                        csv += `"${s.curso}","${s.grupo}","${s.nombre}","${closure}",${stats.qCount},"${avgStr}","${stats.lastExam}"\n`;
-                    });
-                    downloadFile(csv, 'planilla_general_alumnos.csv', 'text/csv');
-                    showToast('CSV generado correctamente.', 'success');
-                };
-
-                const exportMatrixCSV = () => {
-                    let csv = 'TP_Num,Trabajo_Practico,Bien_10,Regular_6,Mal_1,Total_Evaluados,Porcentaje_Aprobacion\n';
-                    enabledTps.value.forEach(tp => {
-                        const stats = getTpStats(tp.num);
-                        csv += `${tp.num},"${tp.name.replace(/"/g, '""')}",${stats.bien},${stats.regular},${stats.mal},${stats.total},${stats.percent}%\n`;
-                    });
-                    downloadFile(csv, 'matriz_estadistica.csv', 'text/csv');
-                    showToast('Matriz CSV descargada.', 'success');
-                };
-
-                const exportEvaluationsPDF = () => {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-                    doc.text('Planilla General de Alumnos y Calificaciones - Física', 14, 15);
-                    
-                    const rows = filteredPlanillaStudents.value.map(s => {
-                        const stats = getStudentStats(s.id);
-                        const closure = s.closureState || 'Abierto';
-                        const avgStr = stats.qCount > 0 ? `${stats.scoreAvg} / 10` : 'Sin evaluar';
-                        return [s.curso, s.grupo, s.nombre, closure, stats.qCount, avgStr, stats.lastExam];
-                    });
-
-                    doc.autoTable({
-                        startY: 22,
-                        head: [['Curso', 'Grp', 'Alumno', 'Estado', 'Rtas', 'Nota Promedio', 'Última Eval']],
-                        body: rows,
-                        styles: { fontSize: 8 }
-                    });
-
-                    doc.save('planilla_alumnos_notas.pdf');
-                    showToast('PDF generado correctamente.', 'success');
-                };
-
-                const exportMatrixPDF = () => {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-                    doc.text('Matriz Estadística Anónima - Laboratorio de Física', 14, 15);
-
-                    const rows = enabledTps.value.map(tp => {
-                        const s = getTpStats(tp.num);
-                        return [`TP Nº ${tp.num}`, tp.name, s.bien, s.regular, s.mal, s.total, s.percent + '%'];
-                    });
-
-                    doc.autoTable({
-                        startY: 22,
-                        head: [['TP', 'Nombre', 'Bien (10)', 'Reg (6)', 'Mal (1)', 'Total', '% Aprob']],
-                        body: rows,
-                        styles: { fontSize: 8 }
-                    });
-
-                    doc.save('matriz_estadistica.pdf');
-                    showToast('PDF Estadística generado.', 'success');
-                };
-
-                const exportJSONBackup = () => {
-                    const backup = {
-                        tps: tps.value,
-                        students: students.value,
-                        questionBank: questionBank.value,
-                        evaluations: evaluations.value
-                    };
-                    downloadFile(JSON.stringify(backup, null, 2), 'evaluador_backup.json', 'application/json');
-                    showToast('Backup JSON descargado.', 'success');
-                };
-
-                const clearAllData = () => {
-                    if (confirm('⚠️ ¿Borrar TODOS los datos de la aplicación? Esto restablecerá los valores de fábrica.')) {
-                        localStorage.clear();
-                        location.reload();
-                    }
-                };
-
-                const deleteStudent = (id) => {
-                    students.value = students.value.filter(s => s.id !== id);
-                    saveState();
-                    showToast('Alumno eliminado.', 'info');
-                };
-
-                return {
-                    activeTab, appTitle, appSubtitle, totalRecordsSaved,
-                    tps, enabledTps, students, questionBank, evaluations,
-                    evalFilter, selectedCourse, sortColumn, sortOrder, expandedStudentIds,
-                    selectedStudentId, selectedStudent, currentQuestion, showAnswer,
-                    toasts, toastIcon, courses, filteredStudents, filteredPlanillaStudents,
-                    getStudentStats, getStudentEvaluations, getStudentTpStatus, toggleSort, getSortIcon,
-                    toggleStudentExpand, startExamForStudent, getGradeBadgeClass, getStudentClosureLabel,
-                    getTpName, onCourseOrGroupChange, loadStudentData, drawRandomQuestion, gradeCurrent,
-                    deleteEvaluation, clearEvaluations, getTpStats, importStudentsCSV, importQuestionsCSV,
-                    importAnswersCSV, toggleTp, exportEvaluationsCSV, exportMatrixCSV, exportEvaluationsPDF,
-                    exportMatrixPDF, exportJSONBackup, clearAllData, deleteStudent, saveState
-                };
-            }
-        }).mount('#app');
-    </script>
+        return {
+          activeTab, tabs, tps, enabledTps, students, questionBank, evaluations,
+          evalFilter, selectedCourse, sortColumn, sortOrder, expandedStudentIds,
+          selectedStudentId, selectedStudent, currentQuestion, showAnswer,
+          courses, filteredStudents, filteredPlanillaStudents, totalSavedRecords,
+          getStudentStats, getStudentEvaluations, getStudentTpStatus, toggleSort, getSortIcon,
+          toggleStudentExpand, startExamForStudent, getGradeBadgeClass, getStudentClosureLabel,
+          getTpName, drawRandomQuestion, gradeCurrent, deleteEvaluation, clearEvaluations,
+          getTpStats, importStudentsCSV, importQuestionsCSV, importAnswersCSV, toggleTp,
+          exportEvaluationsCSV, exportMatrixCSV, exportEvaluationsPDF, exportMatrixPDF,
+          exportJSONBackup, clearAllData, deleteStudent, saveState
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
 </html>
