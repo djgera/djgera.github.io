@@ -978,7 +978,7 @@
 
                         <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
                             <div v-if="tps.length === 0" class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">
-                                No hay Trabajos Prácticos cargados.
+                                No hay Trabajos Prácticos cargados. Cargá tus TPs manualmente o mediante archivo CSV.
                             </div>
                             <div v-for="tp in tps" :key="tp.id" class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4">
                                 <div class="flex items-center space-x-3 flex-1">
@@ -1373,27 +1373,9 @@
                 watch(appTitle, val => localStorage.setItem('eval_appTitle', val));
                 watch(appSubtitle, val => localStorage.setItem('eval_appSubtitle', val));
 
-                // DEFAULT TPS LIST (TP 5 & TP 11 DESHABILITADOS POR DEFECTO)
-                const defaultTpsList = [
-                    { id: 1, name: 'Introducción a las Mediciones', enabled: true },
-                    { id: 2, name: 'Razones y Proporciones', enabled: true },
-                    { id: 3, name: 'Error en las Mediciones', enabled: true },
-                    { id: 4, name: 'Medición de Fuerzas y Elasticidad', enabled: true },
-                    { id: 5, name: 'Peso Específico y Densidad', enabled: false },
-                    { id: 6, name: 'Paralelogramo de Fuerzas, Fuerzas Paralelas y Plano Inclinado', enabled: true },
-                    { id: 7, name: 'Momento de una Fuerza, Palancas, Balanzas y Poleas', enabled: true },
-                    { id: 8, name: 'Movimiento Rectilíneo Uniforme (MRU)', enabled: true },
-                    { id: 9, name: 'Movimiento Rectilíneo Uniformemente Acelerado (MRUA)', enabled: true },
-                    { id: 10, name: 'Caída Libre y Tiro Vertical', enabled: true },
-                    { id: 11, name: 'Movimiento Circular Uniforme (MCU)', enabled: false },
-                    { id: 12, name: 'Dinámica y Leyes de Newton', enabled: true },
-                    { id: 13, name: 'Trabajo, Potencia y Conservación de la Energía', enabled: true },
-                    { id: 14, name: 'Péndulo Ideal y Oscilaciones', enabled: true }
-                ];
-
-                // REACTIVE STATE DESDE LOCALSTORAGE SEGURO
+                // REACTIVE STATE DESDE LOCALSTORAGE SEGURO (POR DEFECTO TPS VACÍO)
                 const students = ref(safeGetStorage('eval_students', []));
-                const tps = ref(safeGetStorage('eval_tps', defaultTpsList));
+                const tps = ref(safeGetStorage('eval_tps', []));
                 const questionBank = ref(safeGetStorage('eval_questionBank', {}));
                 const evaluations = ref(safeGetStorage('eval_evaluations', []));
 
@@ -2094,7 +2076,7 @@
                     showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // EXPORTAR PDF ALUMNOS (CON COLUMNAS INDEPENDIENTES Y CALIFICACIÓN)
+                // EXPORTAR PDF ALUMNOS (COLORES SUAVES POR CURSO/GRUPO Y DESTACADO EN CALIFICACIÓN)
                 function exportStudentsPDF(courseFilter = null) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
@@ -2129,6 +2111,34 @@
                         targetSummaries = targetSummaries.filter(st => st.course === courseFilter);
                     }
 
+                    // Paleta dinámica de colores pastel por Curso y sus variaciones de tono por Grupo
+                    const coursePalette = [
+                        { base: [239, 246, 255], step: [22, 28, 30] }, // Azul suave
+                        { base: [245, 243, 255], step: [20, 20, 30] }, // Violeta suave
+                        { base: [240, 253, 250], step: [24, 26, 24] }, // Teal suave
+                        { base: [254, 252, 232], step: [20, 25, 30] }, // Ámbar suave
+                        { base: [255, 241, 242], step: [25, 25, 20] }, // Rosa suave
+                        { base: [248, 250, 252], step: [15, 18, 20] }  // Slate suave
+                    ];
+
+                    const courseColorMap = {};
+                    let cIndex = 0;
+
+                    targetSummaries.forEach(st => {
+                        if (!courseColorMap[st.course]) {
+                            courseColorMap[st.course] = {
+                                palette: coursePalette[cIndex % coursePalette.length],
+                                groupMap: {}
+                            };
+                            cIndex++;
+                        }
+                        const cData = courseColorMap[st.course];
+                        if (cData.groupMap[st.group] === undefined) {
+                            const gCount = Object.keys(cData.groupMap).length;
+                            cData.groupMap[st.group] = gCount;
+                        }
+                    });
+
                     const tableBody = targetSummaries.map(st => [
                         st.studentName,
                         st.course,
@@ -2146,14 +2156,53 @@
                         startY: 45,
                         head: [['Estudiante', 'Curso', 'Grupo', 'Estado Cierre', 'Evaluadas', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación']],
                         body: tableBody,
-                        theme: 'striped',
-                        headStyles: { fillColor: [2, 132, 199] },
-                        styles: { fontSize: 8 }
+                        theme: 'grid',
+                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
+                        styles: { fontSize: 8, cellPadding: 2.5 },
+                        didParseCell: function(data) {
+                            if (data.section === 'body') {
+                                const rowData = targetSummaries[data.row.index];
+                                if (!rowData) return;
+
+                                const cData = courseColorMap[rowData.course];
+                                const gIndex = cData ? (cData.groupMap[rowData.group] || 0) : 0;
+                                const baseRGB = cData ? cData.palette.base : [255, 255, 255];
+                                const stepRGB = cData ? cData.palette.step : [0, 0, 0];
+
+                                // Aplicar tono pastel para el curso con ajuste leve por grupo
+                                const r = Math.max(0, baseRGB[0] - (gIndex * stepRGB[0]));
+                                const g = Math.max(0, baseRGB[1] - (gIndex * stepRGB[1]));
+                                const b = Math.max(0, baseRGB[2] - (gIndex * stepRGB[2]));
+
+                                data.cell.styles.fillColor = [r, g, b];
+
+                                // DESTACAR COLUMNA DE CALIFICACIÓN (Columna Index 9)
+                                if (data.column.index === 9) {
+                                    data.cell.styles.fontStyle = 'bold';
+                                    if (rowData.evalCount === 0) {
+                                        data.cell.styles.fillColor = [241, 245, 249];
+                                        data.cell.styles.textColor = [100, 116, 139];
+                                    } else {
+                                        const roundScore = rowData.roundedGrade;
+                                        if (roundScore <= 5) { // 1 a 5 (en proceso)
+                                            data.cell.styles.fillColor = [255, 228, 230];
+                                            data.cell.styles.textColor = [159, 18, 57];
+                                        } else if (roundScore <= 7) { // 6 a 7 (suficiente)
+                                            data.cell.styles.fillColor = [254, 243, 199];
+                                            data.cell.styles.textColor = [146, 64, 14];
+                                        } else { // 8 a 10 (avanzado)
+                                            data.cell.styles.fillColor = [209, 250, 229];
+                                            data.cell.styles.textColor = [6, 95, 70];
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     });
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
                     doc.save(fileName);
-                    showToast("PDF descargado correctamente", "success");
+                    showToast("PDF con formato destacado descargado correctamente", "success");
                 }
 
                 // EXPORT MATRIX STATISTICS TO PDF (EXCLUSIVO TPS HABILITADOS)
@@ -2650,7 +2699,7 @@
 
                 function doResetAll() {
                     students.value = [];
-                    tps.value = defaultTpsList;
+                    tps.value = [];
                     questionBank.value = {};
                     evaluations.value = [];
                     selectedCourse.value = '';
