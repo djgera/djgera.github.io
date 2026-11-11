@@ -2307,27 +2307,26 @@
 
                     const title = appTitle.value || 'Evaluador';
                     const subtitle = appSubtitle.value || 'Laboratorio de Física';
-                    const reportTitle = courseFilter 
-                        ? `Reporte de Calificaciones - Curso: ${courseFilter}` 
-                        : 'Reporte General Consolidado de Alumnos y Calificaciones';
-
-                    doc.setFontSize(18);
-                    doc.setTextColor(2, 132, 199);
-                    doc.text(title, 14, 18);
-                    
-                    doc.setFontSize(10);
-                    doc.setTextColor(100);
-                    doc.text(subtitle, 14, 25);
-                    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`, 14, 31);
-                    
-                    doc.setFontSize(12);
-                    doc.setTextColor(30);
-                    doc.text(reportTitle, 14, 40);
 
                     let targetSummaries = groupedEvaluations.value;
                     if (courseFilter) {
                         targetSummaries = targetSummaries.filter(st => st.course === courseFilter);
                     }
+
+                    if (targetSummaries.length === 0) {
+                        showToast("No hay datos para exportar con el filtro seleccionado.", "warning");
+                        return;
+                    }
+
+                    // Agrupar estudiantes por curso
+                    const coursesMap = {};
+                    targetSummaries.forEach(st => {
+                        const c = st.course || 'Sin Curso';
+                        if (!coursesMap[c]) coursesMap[c] = [];
+                        coursesMap[c].push(st);
+                    });
+
+                    const courseKeys = Object.keys(coursesMap).sort();
 
                     const coursePalette = [
                         { base: [239, 246, 255], step: [22, 28, 30] },
@@ -2338,102 +2337,125 @@
                         { base: [248, 250, 252], step: [15, 18, 20] }
                     ];
 
-                    const courseColorMap = {};
-                    let cIndex = 0;
-
-                    targetSummaries.forEach(st => {
-                        if (!courseColorMap[st.course]) {
-                            courseColorMap[st.course] = {
-                                palette: coursePalette[cIndex % coursePalette.length],
-                                groupMap: {}
-                            };
-                            cIndex++;
-                        }
-                        const cData = courseColorMap[st.course];
-                        if (cData.groupMap[st.group] === undefined) {
-                            const gCount = Object.keys(cData.groupMap).length;
-                            cData.groupMap[st.group] = gCount;
-                        }
-                    });
-
-                    const tableBody = targetSummaries.map(st => {
-                        let califFormatted = '-';
-                        if (st.evalCount > 0) {
-                            const roundScore = Math.round(st.avgGrade);
-                            let conc = 'en proceso';
-                            if (roundScore > 7) conc = 'avanzado';
-                            else if (roundScore > 5) conc = 'suficiente';
-                            califFormatted = `${roundScore}\n(${conc})`;
+                    courseKeys.forEach((cKey, cIndex) => {
+                        // Salto de página para cada nuevo curso
+                        if (cIndex > 0) {
+                            doc.addPage();
                         }
 
-                        return [
-                            st.studentName,
-                            st.course,
-                            st.group,
-                            st.closureState || 'Abierto',
-                            st.latestDuration ? `${st.latestDuration}m` : '-',
-                            st.evalCount,
-                            st.bienCount,
-                            st.regularCount,
-                            st.malCount,
-                            st.evalCount > 0 ? st.avgGrade : '-',
-                            califFormatted
-                        ];
-                    });
+                        const courseStudents = coursesMap[cKey];
+                        const reportTitle = `Reporte de Calificaciones - Curso: ${cKey}`;
 
-                    doc.autoTable({
-                        startY: 45,
-                        head: [['Estudiante', 'Curso', 'Grupo', 'Cierre', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación']],
-                        body: tableBody,
-                        theme: 'grid',
-                        pageBreak: 'avoid',
-                        rowPageBreak: 'avoid',
-                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
-                        styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', valign: 'middle' },
-                        didParseCell: function(data) {
-                            if (data.section === 'body') {
-                                const rowData = targetSummaries[data.row.index];
-                                if (!rowData) return;
+                        // Header e info con margen reducido a 10 mm
+                        doc.setFontSize(16);
+                        doc.setTextColor(2, 132, 199);
+                        doc.text(title, 10, 14);
+                        
+                        doc.setFontSize(9);
+                        doc.setTextColor(100);
+                        doc.text(subtitle, 10, 20);
+                        doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`, 10, 25);
+                        
+                        doc.setFontSize(11);
+                        doc.setTextColor(30);
+                        doc.text(reportTitle, 10, 32);
 
-                                const cData = courseColorMap[rowData.course];
-                                const gIndex = cData ? (cData.groupMap[rowData.group] || 0) : 0;
-                                const baseRGB = cData ? cData.palette.base : [255, 255, 255];
-                                const stepRGB = cData ? cData.palette.step : [0, 0, 0];
+                        const groupMap = {};
+                        courseStudents.forEach(st => {
+                            if (groupMap[st.group] === undefined) {
+                                groupMap[st.group] = Object.keys(groupMap).length;
+                            }
+                        });
 
-                                const r = Math.max(0, baseRGB[0] - (gIndex * stepRGB[0]));
-                                const g = Math.max(0, baseRGB[1] - (gIndex * stepRGB[1]));
-                                const b = Math.max(0, baseRGB[2] - (gIndex * stepRGB[2]));
+                        const palette = coursePalette[cIndex % coursePalette.length];
 
-                                data.cell.styles.fillColor = [r, g, b];
+                        const tableBody = courseStudents.map(st => {
+                            let califFormatted = '-';
+                            if (st.evalCount > 0) {
+                                const roundScore = Math.round(st.avgGrade);
+                                let conc = 'en proceso';
+                                if (roundScore > 7) conc = 'avanzado';
+                                else if (roundScore > 5) conc = 'suficiente';
+                                califFormatted = `${roundScore}\n(${conc})`;
+                            }
 
-                                // Centrar horizontalmente Promedio y Calificación
-                                if (data.column.index === 9 || data.column.index === 10) {
-                                    data.cell.styles.halign = 'center';
-                                }
+                            return [
+                                st.studentName,
+                                st.course,
+                                st.group,
+                                st.latestDuration ? `${st.latestDuration}m` : '-',
+                                st.evalCount,
+                                st.bienCount,
+                                st.regularCount,
+                                st.malCount,
+                                st.evalCount > 0 ? st.avgGrade : '-',
+                                califFormatted,
+                                st.closureState || 'Abierto'
+                            ];
+                        });
 
-                                // Estilos específicos para la columna Calificación (Index 10)
-                                if (data.column.index === 10) {
-                                    data.cell.styles.fontStyle = 'bold';
-                                    data.cell.styles.fontSize = 7;
-                                    if (rowData.evalCount === 0) {
-                                        data.cell.styles.fillColor = [241, 245, 249];
-                                        data.cell.styles.textColor = [100, 116, 139];
-                                    } else {
-                                        const roundScore = rowData.roundedGrade;
-                                        if (roundScore <= 5) {
-                                            data.cell.styles.fillColor = [255, 228, 230];
-                                            data.cell.styles.textColor = [159, 18, 57];
-                                        } else if (roundScore <= 7) {
-                                            data.cell.styles.fillColor = [254, 243, 199];
-                                            data.cell.styles.textColor = [146, 64, 14];
+                        doc.autoTable({
+                            startY: 36,
+                            margin: { top: 10, right: 10, bottom: 10, left: 10 },
+                            head: [['Estudiante', 'Curso', 'Grupo', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación', 'Cierre']],
+                            body: tableBody,
+                            theme: 'grid',
+                            pageBreak: 'avoid',
+                            rowPageBreak: 'avoid',
+                            headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
+                            styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+                            didParseCell: function(data) {
+                                if (data.section === 'body') {
+                                    const rowData = courseStudents[data.row.index];
+                                    if (!rowData) return;
+
+                                    const gIndex = groupMap[rowData.group] || 0;
+                                    const r = Math.max(0, palette.base[0] - (gIndex * palette.step[0]));
+                                    const g = Math.max(0, palette.base[1] - (gIndex * palette.step[1]));
+                                    const b = Math.max(0, palette.base[2] - (gIndex * palette.step[2]));
+
+                                    data.cell.styles.fillColor = [r, g, b];
+
+                                    // Centrar horizontalmente Promedio (8), Calificación (9) y Cierre (10)
+                                    if (data.column.index === 8 || data.column.index === 9 || data.column.index === 10) {
+                                        data.cell.styles.halign = 'center';
+                                    }
+
+                                    // Columna Calificación (Index 9)
+                                    if (data.column.index === 9) {
+                                        data.cell.styles.fontStyle = 'bold';
+                                        data.cell.styles.fontSize = 7;
+                                        if (rowData.evalCount === 0) {
+                                            data.cell.styles.fillColor = [241, 245, 249];
+                                            data.cell.styles.textColor = [100, 116, 139];
                                         } else {
-                                            data.cell.styles.fillColor = [209, 250, 229];
+                                            const roundScore = rowData.roundedGrade;
+                                            if (roundScore <= 5) {
+                                                data.cell.styles.fillColor = [255, 228, 230];
+                                                data.cell.styles.textColor = [159, 18, 57];
+                                            } else if (roundScore <= 7) {
+                                                data.cell.styles.fillColor = [254, 243, 199];
+                                                data.cell.styles.textColor = [146, 64, 14];
+                                            } else {
+                                                data.cell.styles.fillColor = [209, 250, 229];
+                                                data.cell.styles.textColor = [6, 95, 70];
+                                            }
+                                        }
+                                    }
+
+                                    // Columna Cierre (Index 10)
+                                    if (data.column.index === 10) {
+                                        data.cell.styles.fontStyle = 'bold';
+                                        data.cell.styles.fontSize = 7.5;
+                                        if (rowData.closureState === 'Final') {
                                             data.cell.styles.textColor = [6, 95, 70];
+                                        } else if (rowData.closureState === 'Parcial') {
+                                            data.cell.styles.textColor = [146, 64, 14];
                                         }
                                     }
                                 }
                             }
-                        }
+                        });
                     });
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
