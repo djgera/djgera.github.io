@@ -62,13 +62,13 @@
 
     <div id="app" v-cloak class="flex-1 flex flex-col min-h-screen">
         
-        <!-- HEADER NAVBAR CON PERSISTENCIA Y NAVEGACIÓN FLEX-WRAP -->
+        <!-- HEADER NAVBAR CON PERSISTENCIA Y TEMPORIZADOR GENERAL -->
         <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
             <div class="max-w-[98%] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col lg:flex-row items-center justify-between py-3 lg:py-0 lg:h-16 gap-3 lg:gap-0">
                     
-                    <!-- App Brand & Persistence Badge -->
-                    <div class="flex items-center justify-between w-full lg:w-auto space-x-4">
+                    <!-- App Brand, Persistence & General Timer -->
+                    <div class="flex flex-wrap items-center justify-between w-full lg:w-auto gap-3">
                         <div class="flex items-center space-x-3">
                             <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-md">
                                 <i class="fa-solid fa-atom text-xl text-white"></i>
@@ -80,10 +80,31 @@
                         </div>
 
                         <!-- Badge Indicador de Persistencia -->
-                        <div class="flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded-full text-xs font-semibold shadow-inner" title="Tus datos se guardan en el navegador automáticamente">
+                        <div class="hidden sm:flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded-full text-xs font-semibold shadow-inner" title="Tus datos se guardan en el navegador automáticamente">
                             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             <i class="fa-solid fa-floppy-disk text-[11px]"></i>
-                            <span>Persistencia Activa ({{ totalRecordsSaved }} registros)</span>
+                            <span>Persistencia ({{ totalRecordsSaved }})</span>
+                        </div>
+
+                        <!-- ⏱️ TEMPORIZADOR GENERAL JORNADA -->
+                        <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 px-3 py-1 rounded-xl text-xs font-semibold shadow-sm">
+                            <i class="fa-solid fa-stopwatch text-brand-400 text-sm"></i>
+                            <span class="text-slate-300 text-[11px] font-bold uppercase hidden xl:inline">Jornada:</span>
+                            <span class="font-mono text-sm font-black" :class="generalTimerBadgeClass">
+                                {{ formatMMSS(generalTimerSeconds) }}
+                            </span>
+                            <div class="flex items-center space-x-1 pl-1">
+                                <button @click="toggleGeneralTimer" :class="generalTimerRunning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'" class="p-1.5 rounded-lg text-white text-[11px] transition" :title="generalTimerRunning ? 'Pausar' : 'Iniciar'">
+                                    <i :class="generalTimerRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
+                                </button>
+                                <button @click="resetGeneralTimer" class="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] transition" title="Resetear Temporizador General">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </button>
+                            </div>
+                            <div class="hidden sm:flex items-center space-x-1 border-l border-slate-700 pl-2">
+                                <input type="number" min="1" max="600" v-model.number="generalTimerSetMinutes" @change="updateGeneralSetMinutes(generalTimerSetMinutes)" class="w-11 bg-slate-900 border border-slate-700 text-white text-[11px] font-bold rounded px-1 text-center" title="Ajustar Minutos Totales">
+                                <span class="text-[10px] text-slate-400 font-bold">m</span>
+                            </div>
                         </div>
                     </div>
 
@@ -274,6 +295,56 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ⏳ TEMPORIZADOR DE EVALUACIÓN INDIVIDUAL POR SESIÓN DE ALUMNO -->
+                <div v-if="currentStudent" class="bg-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4 w-full md:w-auto">
+                        <div class="w-12 h-12 rounded-xl bg-brand-600/30 text-brand-400 border border-brand-500/30 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Temporizador del Examen Oral</span>
+                                <span v-if="evalTimerRunning" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            </div>
+                            <div class="flex items-baseline space-x-3">
+                                <span class="text-3xl font-black font-mono tracking-tight" :class="evalTimerBadgeClass">
+                                    {{ evalTimerFormattedRemaining }}
+                                </span>
+                                <span class="text-xs text-slate-400 font-medium">(Transcurrido: <strong class="text-slate-200">{{ formatMMSS(evalTimerElapsed) }}</strong>)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controles del Reloj de Evaluación -->
+                    <div class="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto">
+                        <!-- Ajuste de límite inicial -->
+                        <div class="flex items-center space-x-1.5 bg-slate-800 px-3 py-2 rounded-xl border border-slate-700 text-xs">
+                            <span class="text-slate-400 text-[11px] font-bold">Límite:</span>
+                            <input type="number" min="1" max="60" v-model.number="evalTimerSetMinutes" @change="updateEvalDefaultMinutes(evalTimerSetMinutes)" class="w-11 bg-slate-900 border border-slate-700 text-white text-center font-bold text-xs rounded p-0.5">
+                            <span class="text-slate-400 text-[11px] font-bold">min</span>
+                        </div>
+
+                        <!-- Botón Manual Comenzar / Pausar -->
+                        <button @click="toggleEvalTimer" 
+                                :class="evalTimerRunning ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'" 
+                                class="px-4 py-2.5 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5">
+                            <i :class="evalTimerRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
+                            <span>{{ evalTimerRunning ? 'Pausar' : (evalTimerElapsed > 0 ? 'Reanudar' : '▶ Comenzar Evaluación') }}</span>
+                        </button>
+
+                        <!-- Botón Prórroga +1 min -->
+                        <button @click="addOneMinuteToEval" class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-bold text-xs rounded-xl transition flex items-center space-x-1" title="Agregar 1 minuto extra de prórroga">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>1 min</span>
+                        </button>
+
+                        <!-- Resetear Reloj -->
+                        <button @click="resetEvalTimer" class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs rounded-xl transition" title="Resetear temporizador de examen">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -474,7 +545,7 @@
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <h2 class="text-lg font-bold text-slate-900">Planilla Consolidada de Alumnos y Notas</h2>
-                            <p class="text-xs text-slate-500">Nómina completa ordenada por Curso, Grupo y Alumno. Notas en Escala 1-10 y Calificación conceptual redondeada.</p>
+                            <p class="text-xs text-slate-500">Nómina completa ordenada por Curso, Grupo y Alumno. Muestra tiempo real de examen, nota y calificación conceptual.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <button @click="exportToCSV" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
@@ -516,7 +587,7 @@
                     </div>
                 </div>
 
-                <!-- TABLA PLANILLA CON ORDENAMIENTO POR DEFECTO (CURSO -> GRUPO -> ALUMNO) Y COLUMNAS SEPARADAS -->
+                <!-- TABLA PLANILLA CON COLUMNA DE DURACIÓN DE EXAMEN -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left border-collapse text-xs">
@@ -524,7 +595,6 @@
                                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider select-none">
                                     <th class="p-3 w-10 text-center"></th>
                                     
-                                    <!-- Header Ordenable: Curso (Columna Independiente) -->
                                     <th @click="toggleSort('course')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center space-x-1.5">
                                             <span>Curso</span>
@@ -532,7 +602,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Grupo (Columna Independiente) -->
                                     <th @click="toggleSort('group')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center space-x-1.5">
                                             <span>Grupo</span>
@@ -540,7 +609,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Alumno -->
                                     <th @click="toggleSort('studentName')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center space-x-1.5">
                                             <span>Nombre y Apellido</span>
@@ -548,7 +616,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Última Fecha -->
                                     <th @click="toggleSort('latestDate')" class="p-3 cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center space-x-1.5">
                                             <span>Última Evaluación</span>
@@ -556,7 +623,14 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Cantidad Preguntas -->
+                                    <!-- COLUMNA DURACIÓN -->
+                                    <th class="p-3 text-center">
+                                        <div class="flex items-center justify-center space-x-1">
+                                            <i class="fa-solid fa-clock text-slate-400"></i>
+                                            <span>Duración</span>
+                                        </div>
+                                    </th>
+
                                     <th @click="toggleSort('evalCount')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center justify-center space-x-1.5">
                                             <span>Preguntas Evaluadas</span>
@@ -564,7 +638,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- Header Ordenable: Nota Promedio Final -->
                                     <th @click="toggleSort('avgGrade')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center justify-center space-x-1.5">
                                             <span>Nota Promedio</span>
@@ -572,7 +645,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- NUEVA COLUMNA: CALIFICACIÓN CONCEPTUAL REDONDEADA -->
                                     <th @click="toggleSort('calificacion')" class="p-3 text-center cursor-pointer hover:bg-slate-200 transition">
                                         <div class="flex items-center justify-center space-x-1.5">
                                             <span>Calificación</span>
@@ -580,7 +652,6 @@
                                         </div>
                                     </th>
 
-                                    <!-- Cierre de Etapa -->
                                     <th class="p-3 text-center">Cierre Etapa</th>
 
                                     <th class="p-3 text-center">Acciones</th>
@@ -588,16 +659,14 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 <tr v-if="groupedEvaluations.length === 0">
-                                    <td colspan="10" class="p-8 text-center text-slate-400 font-medium">
+                                    <td colspan="11" class="p-8 text-center text-slate-400 font-medium">
                                         No se encontraron alumnos que coincidan con los filtros.
                                     </td>
                                 </tr>
 
                                 <template v-for="st in groupedEvaluations" :key="st.studentId">
                                     
-                                    <!-- FILA PRINCIPAL POR ALUMNO -->
                                     <tr class="hover:bg-slate-50 transition border-t border-slate-100">
-                                        <!-- BOTÓN DESPLEGABLE (▼ / ▲) -->
                                         <td class="p-3 text-center">
                                             <button @click="toggleExpandStudent(st.studentId)" 
                                                     class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition">
@@ -605,12 +674,10 @@
                                             </button>
                                         </td>
 
-                                        <!-- COLUMNA INDEPENDIENTE: CURSO -->
                                         <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">
                                             <span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{{ st.course }}</span>
                                         </td>
 
-                                        <!-- COLUMNA INDEPENDIENTE: GRUPO -->
                                         <td class="p-3 font-semibold text-slate-700 whitespace-nowrap">
                                             <span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-bold">Grupo {{ st.group }}</span>
                                         </td>
@@ -623,6 +690,14 @@
                                             {{ formatDate(st.latestDate) }}
                                         </td>
 
+                                        <!-- MUESTRA DE DURACIÓN DE EXAMEN -->
+                                        <td class="p-3 text-center whitespace-nowrap font-mono font-bold text-slate-700">
+                                            <span v-if="st.latestDuration" class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px]">
+                                                ⏱️ {{ st.latestDuration }} min
+                                            </span>
+                                            <span v-else class="text-slate-400 italic text-[11px]">-</span>
+                                        </td>
+
                                         <td class="p-3 text-center whitespace-nowrap">
                                             <span v-if="st.evalCount > 0" class="font-bold text-slate-800">{{ st.evalCount }} evaluadas</span>
                                             <span v-else class="text-slate-400 italic">0</span>
@@ -633,7 +708,6 @@
                                             </div>
                                         </td>
 
-                                        <!-- PROMEDIO EXACTO ESCALA 1 A 10 -->
                                         <td class="p-3 text-center whitespace-nowrap">
                                             <span v-if="st.evalCount > 0" :class="gradeBadgeClass(st.avgGrade)" class="px-2.5 py-1 rounded-full font-black text-xs border shadow-sm">
                                                 {{ st.avgGrade }} / 10
@@ -641,7 +715,6 @@
                                             <span v-else class="text-slate-400 italic">Sin evaluar</span>
                                         </td>
 
-                                        <!-- NUEVA CELDA: CALIFICACIÓN REDONDEADA Y CONCEPTUAL -->
                                         <td class="p-3 text-center whitespace-nowrap">
                                             <span v-if="st.evalCount > 0" :class="calificacionBadgeClass(st.avgGrade)" class="px-2.5 py-1 rounded-lg font-bold text-xs border shadow-sm">
                                                 {{ getCalificacionText(st.avgGrade, st.evalCount) }}
@@ -649,7 +722,6 @@
                                             <span v-else class="text-slate-400 italic">Sin evaluar</span>
                                         </td>
 
-                                        <!-- SELECTOR DIRECTO CIERRE DE ETAPA -->
                                         <td class="p-3 text-center whitespace-nowrap" @click.stop>
                                             <select :value="st.closureState || 'Abierto'" @change="updateStudentClosureState(st.studentId, $event.target.value)" 
                                                     class="bg-slate-100 border border-slate-300 text-[11px] font-bold rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500">
@@ -669,9 +741,9 @@
                                         </td>
                                     </tr>
 
-                                    <!-- FILA DESPLEGABLE CON DETALLES DE INTENTOS EVALUADOS Y MATRIZ DE TPS -->
+                                    <!-- FILA DESPLEGABLE CON DETALLES DE SESIONES Y PREGUNTAS -->
                                     <tr v-if="isExpanded(st.studentId)" class="bg-slate-50/80">
-                                        <td colspan="10" class="p-4 pl-12 border-b border-slate-200">
+                                        <td colspan="11" class="p-4 pl-12 border-b border-slate-200">
                                             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-inner space-y-4">
                                                 
                                                 <!-- MATRIZ DE TPS HABILITADOS PARA ESTE ALUMNO -->
@@ -697,7 +769,7 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- HISTORIAL DE PREGUNTAS INTENTADAS -->
+                                                <!-- HISTORIAL DE PREGUNTAS INTENTADAS CON DURACIÓN -->
                                                 <div class="space-y-2">
                                                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                                         <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center space-x-1">
@@ -712,6 +784,7 @@
                                                             <thead>
                                                                 <tr class="bg-slate-100 text-slate-500 font-semibold border-b border-slate-200">
                                                                     <th class="p-2 w-36">Fecha/Hora</th>
+                                                                    <th class="p-2 w-24 text-center">Duración</th>
                                                                     <th class="p-2 w-48">Trabajo Práctico</th>
                                                                     <th class="p-2">Pregunta Sorteada</th>
                                                                     <th class="p-2 text-center w-28">Calificación</th>
@@ -720,12 +793,15 @@
                                                             </thead>
                                                             <tbody class="divide-y divide-slate-100">
                                                                 <tr v-if="st.attempts.length === 0">
-                                                                    <td colspan="5" class="p-4 text-center text-slate-400 italic">
+                                                                    <td colspan="6" class="p-4 text-center text-slate-400 italic">
                                                                         Este alumno aún no posee preguntas orales registradas.
                                                                     </td>
                                                                 </tr>
                                                                 <tr v-for="att in st.attempts" :key="att.id" class="hover:bg-slate-50">
                                                                     <td class="p-2 text-slate-500 whitespace-nowrap">{{ formatDate(att.date) }}</td>
+                                                                    <td class="p-2 text-center font-mono text-[11px] text-slate-600 font-bold whitespace-nowrap">
+                                                                        {{ att.duration ? att.duration + ' m' : '-' }}
+                                                                    </td>
                                                                     <td class="p-2 font-bold text-slate-700 whitespace-nowrap">{{ att.tpName }}</td>
                                                                     <td class="p-2 text-slate-800 font-medium">"{{ att.questionText }}"</td>
                                                                     <td class="p-2 text-center whitespace-nowrap">
@@ -1137,7 +1213,7 @@
                             <i class="fa-solid fa-box-archive text-brand-500"></i>
                             <span>Respaldo y Restauración Completa (JSON)</span>
                         </h3>
-                        <p class="text-xs text-slate-500">Descargá todos tus datos (Alumnos, TPs, Preguntas, Títulos y Planilla) en un archivo JSON para respaldo o migración.</p>
+                        <p class="text-xs text-slate-500">Descargá todos tus datos (Alumnos, TPs, Preguntas, Títulos, Temporizadores y Planilla) en un archivo JSON para respaldo o migración.</p>
                         
                         <div class="flex flex-wrap gap-3 pt-1">
                             <button @click="downloadBackupJSON" class="px-4 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
@@ -1207,19 +1283,23 @@
                     <p class="text-xs text-slate-500">Estudiante: <strong class="text-slate-800">{{ currentStudent?.name }}</strong></p>
                 </div>
 
-                <!-- Estadísticas de la Ronda -->
-                <div class="grid grid-cols-3 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                <!-- Estadísticas de la Ronda y Duración -->
+                <div class="grid grid-cols-4 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">BIEN (10 pts)</span>
-                        <span class="text-lg font-extrabold text-emerald-600">{{ finishSummary.bien }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">DURACIÓN</span>
+                        <span class="text-base font-extrabold text-slate-800 font-mono">{{ formatMMSS(evalTimerElapsed) }} m</span>
                     </div>
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">REGULAR (6 pts)</span>
-                        <span class="text-lg font-extrabold text-amber-600">{{ finishSummary.regular }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">BIEN (10pt)</span>
+                        <span class="text-base font-extrabold text-emerald-600">{{ finishSummary.bien }}</span>
                     </div>
                     <div>
-                        <span class="text-xs text-slate-400 font-semibold block">MAL (1 pt)</span>
-                        <span class="text-lg font-extrabold text-rose-600">{{ finishSummary.mal }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">REG (6pt)</span>
+                        <span class="text-base font-extrabold text-amber-600">{{ finishSummary.regular }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase">MAL (1pt)</span>
+                        <span class="text-base font-extrabold text-rose-600">{{ finishSummary.mal }}</span>
                     </div>
                 </div>
 
@@ -1230,14 +1310,14 @@
                         {{ finishSummary.grade10 }} <span class="text-sm font-normal text-slate-500">/ 10</span>
                     </div>
                     <span class="text-[11px] text-slate-500 block">
-                        ({{ finishSummary.totalPoints }} pts totales acumulados en {{ finishSummary.totalQuestions }} preguntas)
+                        ({{ finishSummary.totalPoints }} pts acumulados en {{ finishSummary.totalQuestions }} preguntas)
                     </span>
                 </div>
 
                 <!-- Comentario del Docente -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones / Comentario (Opcional)</label>
-                    <textarea v-model="finishNotes" rows="2" placeholder="Ej: Buen manejo de conceptos, reforzar cálculo de incertidumbres..." class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5"></textarea>
+                    <textarea v-model="finishNotes" rows="2" placeholder="Ej: Buen manejo de conceptos, responder con mayor soltura..." class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5"></textarea>
                 </div>
 
                 <!-- Acciones Modal -->
@@ -1277,9 +1357,9 @@
 
     <!-- VUE 3 APPLICATION SCRIPT -->
     <script>
-        const { createApp, ref, computed, watch } = Vue;
+        const { createApp, ref, computed, watch, onUnmounted } = Vue;
 
-        // HELPER CONFORME A RFC-4180 PARA PARSEAR CSV (RESPETA COMAS DENTRO DE COMILLAS)
+        // HELPER CONFORME A RFC-4180 PARA PARSEAR CSV
         function parseCustomCSV(text) {
             if (!text) return [];
             const lines = text.split(/\r\n|\n|\r/);
@@ -1325,13 +1405,12 @@
             return result;
         }
 
-        // ENVOLVENTES SEGUROS PARA LOCALSTORAGE
+        // ENVOLVENTES SEGUROS LOCALSTORAGE
         function safeGetStorage(key, defaultVal) {
             try {
                 const item = localStorage.getItem(key);
                 return item ? JSON.parse(item) : defaultVal;
             } catch(e) {
-                console.warn('Storage read warning:', e);
                 return defaultVal;
             }
         }
@@ -1339,19 +1418,15 @@
         function safeSetStorage(key, value) {
             try {
                 localStorage.setItem(key, JSON.stringify(value));
-            } catch(e) {
-                console.warn('Storage set warning:', e);
-            }
+            } catch(e) {}
         }
 
-        // ESCALA ESTANDARIZADA DE CALIFICACIÓN: BIEN=10, REGULAR=6, MAL=1
         function getPointsFromGrade(label, score) {
             if (label === 'Bien' || score === 1.0 || score === 10) return 10;
             if (label === 'Regular' || score === 0.5 || score === 6) return 6;
-            return 1; // Mal / 0.0 -> 1 pt
+            return 1;
         }
 
-        // FUNCIÓN HELPER: OBTENER CALIFICACIÓN CONCEPTUAL CON PROMEDIO REDONDEADO
         function getCalificacionText(avgGrade, evalCount) {
             if (!evalCount || evalCount === 0 || avgGrade === null || avgGrade === undefined) {
                 return 'Sin evaluar';
@@ -1362,30 +1437,138 @@
             return `${roundScore} (avanzado)`;
         }
 
+        function formatMMSS(totalSec) {
+            if (totalSec === null || totalSec === undefined || isNaN(totalSec)) return '00:00';
+            const absSec = Math.abs(totalSec);
+            const m = Math.floor(absSec / 60);
+            const s = absSec % 60;
+            const str = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            return totalSec < 0 ? `-${str}` : str;
+        }
+
         createApp({
             setup() {
                 const activeTab = ref('evaluator');
 
-                // DEFAULT CONFIGURABLE APP TITLE & SUBTITLE
                 const appTitle = ref(localStorage.getItem('eval_appTitle') || 'Evaluador');
                 const appSubtitle = ref(localStorage.getItem('eval_appSubtitle') || 'Laboratorio de Física');
 
                 watch(appTitle, val => localStorage.setItem('eval_appTitle', val));
                 watch(appSubtitle, val => localStorage.setItem('eval_appSubtitle', val));
 
-                // REACTIVE STATE DESDE LOCALSTORAGE SEGURO (POR DEFECTO TPS VACÍO)
                 const students = ref(safeGetStorage('eval_students', []));
                 const tps = ref(safeGetStorage('eval_tps', []));
                 const questionBank = ref(safeGetStorage('eval_questionBank', {}));
                 const evaluations = ref(safeGetStorage('eval_evaluations', []));
 
-                // WATCHERS DIRECTOS CON GUARDADO SEGURO
                 watch(students, val => safeSetStorage('eval_students', val), { deep: true });
                 watch(tps, val => safeSetStorage('eval_tps', val), { deep: true });
                 watch(questionBank, val => safeSetStorage('eval_questionBank', val), { deep: true });
                 watch(evaluations, val => safeSetStorage('eval_evaluations', val), { deep: true });
 
-                // CONTADOR TOTAL DE REGISTROS EN LA PERSISTENCIA
+                // ⏱️ ESTADO DEL TEMPORIZADOR GENERAL DE LA JORNADA
+                const generalTimerSetMinutes = ref(safeGetStorage('eval_genTimerMinutes', 120));
+                const generalTimerSeconds = ref(generalTimerSetMinutes.value * 60);
+                const generalTimerRunning = ref(false);
+                let generalTimerInterval = null;
+
+                function toggleGeneralTimer() {
+                    if (generalTimerRunning.value) {
+                        clearInterval(generalTimerInterval);
+                        generalTimerRunning.value = false;
+                    } else {
+                        generalTimerRunning.value = true;
+                        generalTimerInterval = setInterval(() => {
+                            if (generalTimerSeconds.value > 0) {
+                                generalTimerSeconds.value--;
+                            } else {
+                                clearInterval(generalTimerInterval);
+                                generalTimerRunning.value = false;
+                            }
+                        }, 1000);
+                    }
+                }
+
+                function resetGeneralTimer() {
+                    clearInterval(generalTimerInterval);
+                    generalTimerRunning.value = false;
+                    generalTimerSeconds.value = generalTimerSetMinutes.value * 60;
+                }
+
+                function updateGeneralSetMinutes(mins) {
+                    if (mins < 1) mins = 1;
+                    generalTimerSetMinutes.value = mins;
+                    safeSetStorage('eval_genTimerMinutes', mins);
+                    resetGeneralTimer();
+                }
+
+                const generalTimerBadgeClass = computed(() => {
+                    if (generalTimerSeconds.value === 0) return 'text-rose-400 animate-pulse';
+                    if (generalTimerSeconds.value <= 600) return 'text-amber-400';
+                    return 'text-emerald-400';
+                });
+
+                // ⏳ ESTADO DEL TEMPORIZADOR INDIVIDUAL POR SESIÓN DE ALUMNO
+                const evalTimerSetMinutes = ref(safeGetStorage('eval_evalTimerMinutes', 5));
+                const evalTimerElapsed = ref(0);
+                const evalTimerLimit = ref(evalTimerSetMinutes.value * 60);
+                const evalTimerRunning = ref(false);
+                let evalTimerInterval = null;
+
+                function startEvalTimer() {
+                    if (!evalTimerRunning.value) {
+                        evalTimerRunning.value = true;
+                        evalTimerInterval = setInterval(() => {
+                            evalTimerElapsed.value++;
+                        }, 1000);
+                    }
+                }
+
+                function pauseEvalTimer() {
+                    evalTimerRunning.value = false;
+                    clearInterval(evalTimerInterval);
+                }
+
+                function toggleEvalTimer() {
+                    if (evalTimerRunning.value) pauseEvalTimer();
+                    else startEvalTimer();
+                }
+
+                function resetEvalTimer() {
+                    pauseEvalTimer();
+                    evalTimerElapsed.value = 0;
+                    evalTimerLimit.value = evalTimerSetMinutes.value * 60;
+                }
+
+                function addOneMinuteToEval() {
+                    evalTimerLimit.value += 60;
+                    showToast("+1 minuto agregado a la evaluación", "info");
+                }
+
+                function updateEvalDefaultMinutes(mins) {
+                    if (mins < 1) mins = 1;
+                    evalTimerSetMinutes.value = mins;
+                    safeSetStorage('eval_evalTimerMinutes', mins);
+                    evalTimerLimit.value = mins * 60;
+                }
+
+                const evalTimerFormattedRemaining = computed(() => {
+                    const rem = evalTimerLimit.value - evalTimerElapsed.value;
+                    return formatMMSS(rem);
+                });
+
+                const evalTimerBadgeClass = computed(() => {
+                    const rem = evalTimerLimit.value - evalTimerElapsed.value;
+                    if (rem < 0) return 'text-rose-500 animate-pulse';
+                    if (rem <= 60) return 'text-amber-400';
+                    return 'text-emerald-400';
+                });
+
+                onUnmounted(() => {
+                    if (generalTimerInterval) clearInterval(generalTimerInterval);
+                    if (evalTimerInterval) clearInterval(evalTimerInterval);
+                });
+
                 const totalRecordsSaved = computed(() => {
                     let qCount = 0;
                     Object.values(questionBank.value).forEach(arr => {
@@ -1394,7 +1577,6 @@
                     return students.value.length + tps.value.length + evaluations.value.length + qCount;
                 });
 
-                // DYNAMIC COURSES & GROUPS DERIVED FROM STUDENTS
                 const courses = computed(() => {
                     const set = new Set(students.value.map(s => s.course).filter(Boolean));
                     return Array.from(set).sort();
@@ -1410,11 +1592,8 @@
                     return Array.from(set).sort();
                 });
 
-                const enabledTps = computed(() => {
-                    return tps.value.filter(t => t.enabled);
-                });
+                const enabledTps = computed(() => tps.value.filter(t => t.enabled));
 
-                // EVALUATOR STATE
                 const selectedCourse = ref('');
                 const selectedGroup = ref('');
                 const selectedStudentId = ref('');
@@ -1425,21 +1604,18 @@
                 const wasQuestionCycleReset = ref(false);
                 const showAnswer = ref(false);
 
-                // EVALUATION ROUND
                 const activeRound = ref({
                     studentId: '',
                     questions: []
                 });
 
-                // MODALS & INPUTS
                 const showFinishModal = ref(false);
                 const finishNotes = ref('');
 
-                // PLANILLA ACCORDION, FILTERS & SORTING STATE (POR DEFECTO 'default': CURSO -> GRUPO -> ALUMNO)
                 const historyFilterSearch = ref('');
                 const historyFilterCourse = ref('');
                 const historyFilterGroup = ref('');
-                const historyFilterStatus = ref('all'); // all, evaluated, not_evaluated
+                const historyFilterStatus = ref('all');
                 const sortColumn = ref('default');
                 const sortOrder = ref('asc');
                 const expandedStudents = ref({});
@@ -1452,7 +1628,6 @@
                 const newTp = ref({ id: 1, name: '', enabled: true });
                 const editingTp = ref(1);
 
-                // TOAST NOTIFICATIONS SYSTEM
                 const toasts = ref([]);
                 function showToast(message, type = 'info') {
                     const id = Date.now() + Math.random();
@@ -1471,16 +1646,12 @@
                     }
                 }
 
-                // COMPUTEDS FOR EVALUATOR
                 const filteredStudents = computed(() => {
                     if (!selectedCourse.value || !selectedGroup.value) return [];
                     return students.value.filter(s => s.course === selectedCourse.value && s.group === selectedGroup.value);
                 });
 
-                const selectedTpItem = computed(() => {
-                    return tps.value.find(t => t.id === selectedTp.value) || null;
-                });
-
+                const selectedTpItem = computed(() => tps.value.find(t => t.id === selectedTp.value) || null);
                 const editingTpKey = computed(() => `tp${editingTp.value}`);
 
                 const currentStudentStats = computed(() => {
@@ -1490,9 +1661,7 @@
                     return { count: stSummary.evalCount, avgGrade: stSummary.avgGrade.toFixed(1) };
                 });
 
-                const activeRoundTotalPoints = computed(() => {
-                    return activeRound.value.questions.reduce((acc, q) => acc + q.points, 0);
-                });
+                const activeRoundTotalPoints = computed(() => activeRound.value.questions.reduce((acc, q) => acc + q.points, 0));
 
                 const activeRoundGrade10 = computed(() => {
                     const count = activeRound.value.questions.length;
@@ -1522,25 +1691,23 @@
                     };
                 });
 
-                // PLANILLA CONSOLIDADA DE TODOS LOS ALUMNOS (EVALUADOS Y NO EVALUADOS)
+                // PLANILLA CONSOLIDADA DE TODOS LOS ALUMNOS
                 const groupedEvaluations = computed(() => {
                     const studentMap = {};
 
-                    // Inicializar con la nómina completa de alumnos
                     students.value.forEach(st => {
                         studentMap[st.id] = {
                             studentId: st.id,
                             studentName: st.name,
                             course: st.course,
                             group: st.group,
-                            courseGroup: `${st.course} - Grupo ${st.group}`,
                             closureState: st.closureState || 'Abierto',
                             attempts: [],
-                            latestDate: null
+                            latestDate: null,
+                            latestDuration: null
                         };
                     });
 
-                    // Cargar evaluaciones registradas
                     evaluations.value.forEach(ev => {
                         const stId = ev.studentId;
                         if (!studentMap[stId]) {
@@ -1549,16 +1716,17 @@
                                 studentName: ev.studentName,
                                 course: ev.course,
                                 group: ev.group,
-                                courseGroup: `${ev.course} - Grupo ${ev.group}`,
                                 closureState: 'Abierto',
                                 attempts: [],
-                                latestDate: ev.date || ev.timestamp
+                                latestDate: ev.date || ev.timestamp,
+                                latestDuration: ev.duration || null
                             };
                         }
 
                         const evDate = ev.date || ev.timestamp;
                         if (!studentMap[stId].latestDate || new Date(evDate) > new Date(studentMap[stId].latestDate)) {
                             studentMap[stId].latestDate = evDate;
+                            if (ev.duration) studentMap[stId].latestDuration = ev.duration;
                         }
 
                         if (Array.isArray(ev.details) && ev.details.length > 0) {
@@ -1570,6 +1738,7 @@
                                     parentEvId: ev.id,
                                     detailIndex: idx,
                                     date: evDate,
+                                    duration: ev.duration || null,
                                     tp: d.tp,
                                     tpName: tpFound ? `TP Nº ${d.tp}: ${tpFound.name}` : `TP Nº ${d.tp}`,
                                     questionText: d.text,
@@ -1585,6 +1754,7 @@
                                 parentEvId: ev.id,
                                 detailIndex: null,
                                 date: evDate,
+                                duration: ev.duration || null,
                                 tp: ev.tpNum || 1,
                                 tpName: tpFound ? `TP Nº ${ev.tpNum}: ${tpFound.name}` : `TP Nº ${ev.tpNum || 1}`,
                                 questionText: ev.questionText,
@@ -1621,7 +1791,6 @@
                         };
                     });
 
-                    // Aplicar Filtros (Búsqueda, Curso, Grupo, Estado de Evaluación)
                     const filtered = result.filter(st => {
                         const matchesSearch = !historyFilterSearch.value || st.studentName.toLowerCase().includes(historyFilterSearch.value.toLowerCase());
                         const matchesCourse = !historyFilterCourse.value || st.course === historyFilterCourse.value;
@@ -1637,18 +1806,14 @@
                         return matchesSearch && matchesCourse && matchesGroup && matchesStatus;
                     });
 
-                    // ORDENAMIENTO: POR DEFECTO CURSO -> GRUPO -> ALUMNO (O DINÁMICO POR COLUMNA)
                     filtered.sort((a, b) => {
                         if (sortColumn.value === 'default') {
-                            // 1. Curso (orden natural numérico/alfabético)
                             const cComp = (a.course || '').localeCompare(b.course || '', undefined, { numeric: true, sensitivity: 'base' });
                             if (cComp !== 0) return sortOrder.value === 'asc' ? cComp : -cComp;
 
-                            // 2. Grupo
                             const gComp = (a.group || '').localeCompare(b.group || '', undefined, { numeric: true, sensitivity: 'base' });
                             if (gComp !== 0) return sortOrder.value === 'asc' ? gComp : -gComp;
 
-                            // 3. Alumno / Nombre
                             const nComp = (a.studentName || '').localeCompare(b.studentName || '');
                             return sortOrder.value === 'asc' ? nComp : -nComp;
                         }
@@ -1675,7 +1840,6 @@
                     return filtered;
                 });
 
-                // MATRIZ ESTADÍSTICA (EXCLUSIVAMENTE TPS HABILITADOS)
                 const tpStatistics = computed(() => {
                     const allDetails = [];
                     evaluations.value.forEach(ev => {
@@ -1710,28 +1874,12 @@
                         const qStatsMap = {};
 
                         bankQuestions.forEach(q => {
-                            qStatsMap[q.id] = {
-                                id: q.id,
-                                text: q.text,
-                                count: 0,
-                                bien: 0,
-                                regular: 0,
-                                mal: 0,
-                                totalPoints: 0
-                            };
+                            qStatsMap[q.id] = { id: q.id, text: q.text, count: 0, bien: 0, regular: 0, mal: 0, totalPoints: 0 };
                         });
 
                         tpDetails.forEach(d => {
                             if (!qStatsMap[d.qId]) {
-                                qStatsMap[d.qId] = {
-                                    id: d.qId,
-                                    text: d.text || `Pregunta ${d.qId}`,
-                                    count: 0,
-                                    bien: 0,
-                                    regular: 0,
-                                    mal: 0,
-                                    totalPoints: 0
-                                };
+                                qStatsMap[d.qId] = { id: d.qId, text: d.text || `Pregunta ${d.qId}`, count: 0, bien: 0, regular: 0, mal: 0, totalPoints: 0 };
                             }
                             const qStat = qStatsMap[d.qId];
                             qStat.count++;
@@ -1743,10 +1891,7 @@
 
                         const questionList = Object.values(qStatsMap).map(q => {
                             const successRate = q.count > 0 ? Math.round((q.totalPoints / (q.count * 10)) * 100) : 0;
-                            return {
-                                ...q,
-                                successRate
-                            };
+                            return { ...q, successRate };
                         });
 
                         const totalEvaluationsInTp = tpDetails.length;
@@ -1764,7 +1909,6 @@
                     });
                 });
 
-                // METODOS PLANILLA
                 function toggleSort(col) {
                     if (sortColumn.value === col) {
                         sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
@@ -1813,9 +1957,7 @@
                     let count = 0;
                     if (st && st.questionHistory) {
                         const key = `tp${tpId}`;
-                        if (st.questionHistory[key]) {
-                            count = st.questionHistory[key].length;
-                        }
+                        if (st.questionHistory[key]) count = st.questionHistory[key].length;
                     }
                     const summary = groupedEvaluations.value.find(s => s.studentId === studentId);
                     if (summary) {
@@ -1831,9 +1973,7 @@
                         const ev = evaluations.value[evIndex];
                         if (Array.isArray(ev.details) && attempt.detailIndex !== null) {
                             ev.details.splice(attempt.detailIndex, 1);
-                            if (ev.details.length === 0) {
-                                evaluations.value.splice(evIndex, 1);
-                            }
+                            if (ev.details.length === 0) evaluations.value.splice(evIndex, 1);
                         } else {
                             evaluations.value.splice(evIndex, 1);
                         }
@@ -1841,13 +1981,13 @@
                     }
                 }
 
-                // METHODS FOR EVALUATION PROCESS
                 function onCourseOrGroupChange() {
                     selectedStudentId.value = '';
                     currentStudent.value = null;
                     currentQuestionItem.value = null;
                     showAnswer.value = false;
                     activeRound.value.questions = [];
+                    resetEvalTimer();
                 }
 
                 function loadStudentData() {
@@ -1855,6 +1995,7 @@
                     const st = students.value.find(s => s.id === selectedStudentId.value);
                     currentStudent.value = st || null;
                     activeRound.value = { studentId: selectedStudentId.value, questions: [] };
+                    resetEvalTimer();
                     
                     if (st) {
                         if (enabledTps.value.length > 0 && !enabledTps.value.some(t => t.id === selectedTp.value)) {
@@ -1867,9 +2008,7 @@
                 function selectTP(tpId) {
                     selectedTp.value = tpId;
                     showAnswer.value = false;
-                    if (currentStudent.value) {
-                        pickRandomQuestion();
-                    }
+                    if (currentStudent.value) pickRandomQuestion();
                 }
 
                 function getStudentEvalCount(studentId) {
@@ -1906,9 +2045,7 @@
                         return;
                     }
 
-                    if (!currentStudent.value.questionHistory) {
-                        currentStudent.value.questionHistory = {};
-                    }
+                    if (!currentStudent.value.questionHistory) currentStudent.value.questionHistory = {};
 
                     let answeredIds = currentStudent.value.questionHistory[tpKey] || [];
 
@@ -1963,12 +2100,8 @@
                     });
 
                     const tpKey = `tp${selectedTp.value}`;
-                    if (!currentStudent.value.questionHistory) {
-                        currentStudent.value.questionHistory = {};
-                    }
-                    if (!currentStudent.value.questionHistory[tpKey]) {
-                        currentStudent.value.questionHistory[tpKey] = [];
-                    }
+                    if (!currentStudent.value.questionHistory) currentStudent.value.questionHistory = {};
+                    if (!currentStudent.value.questionHistory[tpKey]) currentStudent.value.questionHistory[tpKey] = [];
                     if (!currentStudent.value.questionHistory[tpKey].includes(currentQuestionItem.value.id)) {
                         currentStudent.value.questionHistory[tpKey].push(currentQuestionItem.value.id);
                     }
@@ -1990,7 +2123,10 @@
                 function saveEvaluationSession() {
                     if (!currentStudent.value || activeRound.value.questions.length === 0) return;
 
+                    pauseEvalTimer();
+                    const durationStr = formatMMSS(evalTimerElapsed.value);
                     const summary = finishSummary.value;
+
                     const newEv = {
                         id: 'ev-' + Date.now(),
                         studentId: currentStudent.value.id,
@@ -1998,6 +2134,7 @@
                         course: currentStudent.value.course,
                         group: currentStudent.value.group,
                         date: new Date().toISOString(),
+                        duration: durationStr,
                         totalQuestions: summary.totalQuestions,
                         totalPoints: summary.totalPoints,
                         grade10: summary.grade10,
@@ -2011,10 +2148,10 @@
                     evaluations.value.push(newEv);
                     showFinishModal.value = false;
                     activeRound.value.questions = [];
-                    showToast("¡Evaluación registrada en la planilla!", "success");
+                    resetEvalTimer();
+                    showToast(`¡Evaluación registrada! Duración: ${durationStr} min`, "success");
                 }
 
-                // UTILS & EXPORT PROCEDURES
                 function getInitials(name) {
                     if (!name) return 'ST';
                     const parts = name.replace(/"/g, '').split(',').reverse().join(' ').trim().split(' ');
@@ -2041,14 +2178,14 @@
                     return 'bg-emerald-100 text-emerald-800 border-emerald-300';
                 }
 
-                // EXPORT PLANILLA COMPLETA A CSV (CON COLUMNAS CURSO, GRUPO Y CALIFICACIÓN)
+                // EXPORT PLANILLA CSV (INCLUYE DURACIÓN)
                 function exportToCSV() {
                     if (groupedEvaluations.value.length === 0) {
                         showToast("No hay registros en la planilla.", "warning");
                         return;
                     }
 
-                    const headers = ["Curso", "Grupo", "Nombre y Apellido", "Estado Cierre", "Ultima Evaluacion", "Preguntas Evaluadas", "Bien (10pt)", "Regular (6pt)", "Mal (1pt)", "Nota Promedio (10)", "Calificacion"];
+                    const headers = ["Curso", "Grupo", "Nombre y Apellido", "Estado Cierre", "Ultima Evaluacion", "Duracion Examen (MM:SS)", "Preguntas Evaluadas", "Bien (10pt)", "Regular (6pt)", "Mal (1pt)", "Nota Promedio (10)", "Calificacion"];
                     
                     const rows = groupedEvaluations.value.map(st => [
                         `"${st.course.replace(/"/g, '""')}"`,
@@ -2056,6 +2193,7 @@
                         `"${st.studentName.replace(/"/g, '""')}"`,
                         `"${st.closureState || 'Abierto'}"`,
                         formatDate(st.latestDate),
+                        st.latestDuration ? `"${st.latestDuration}"` : "-",
                         st.evalCount,
                         st.bienCount,
                         st.regularCount,
@@ -2076,7 +2214,7 @@
                     showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // EXPORTAR PDF ALUMNOS (COLORES SUAVES POR CURSO/GRUPO Y DESTACADO EN CALIFICACIÓN)
+                // EXPORTAR PDF ALUMNOS (INCLUYE COLUMNA DE DURACIÓN)
                 function exportStudentsPDF(courseFilter = null) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
@@ -2092,7 +2230,6 @@
                         ? `Reporte de Calificaciones - Curso: ${courseFilter}` 
                         : 'Reporte General Consolidado de Alumnos y Calificaciones';
 
-                    // Header
                     doc.setFontSize(18);
                     doc.setTextColor(2, 132, 199);
                     doc.text(title, 14, 18);
@@ -2111,14 +2248,13 @@
                         targetSummaries = targetSummaries.filter(st => st.course === courseFilter);
                     }
 
-                    // Paleta dinámica de colores pastel por Curso y sus variaciones de tono por Grupo
                     const coursePalette = [
-                        { base: [239, 246, 255], step: [22, 28, 30] }, // Azul suave
-                        { base: [245, 243, 255], step: [20, 20, 30] }, // Violeta suave
-                        { base: [240, 253, 250], step: [24, 26, 24] }, // Teal suave
-                        { base: [254, 252, 232], step: [20, 25, 30] }, // Ámbar suave
-                        { base: [255, 241, 242], step: [25, 25, 20] }, // Rosa suave
-                        { base: [248, 250, 252], step: [15, 18, 20] }  // Slate suave
+                        { base: [239, 246, 255], step: [22, 28, 30] },
+                        { base: [245, 243, 255], step: [20, 20, 30] },
+                        { base: [240, 253, 250], step: [24, 26, 24] },
+                        { base: [254, 252, 232], step: [20, 25, 30] },
+                        { base: [255, 241, 242], step: [25, 25, 20] },
+                        { base: [248, 250, 252], step: [15, 18, 20] }
                     ];
 
                     const courseColorMap = {};
@@ -2144,6 +2280,7 @@
                         st.course,
                         st.group,
                         st.closureState || 'Abierto',
+                        st.latestDuration ? `${st.latestDuration}m` : '-',
                         st.evalCount,
                         st.bienCount,
                         st.regularCount,
@@ -2154,7 +2291,7 @@
 
                     doc.autoTable({
                         startY: 45,
-                        head: [['Estudiante', 'Curso', 'Grupo', 'Estado Cierre', 'Evaluadas', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación']],
+                        head: [['Estudiante', 'Curso', 'Grupo', 'Cierre', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación']],
                         body: tableBody,
                         theme: 'grid',
                         headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -2169,28 +2306,27 @@
                                 const baseRGB = cData ? cData.palette.base : [255, 255, 255];
                                 const stepRGB = cData ? cData.palette.step : [0, 0, 0];
 
-                                // Aplicar tono pastel para el curso con ajuste leve por grupo
                                 const r = Math.max(0, baseRGB[0] - (gIndex * stepRGB[0]));
                                 const g = Math.max(0, baseRGB[1] - (gIndex * stepRGB[1]));
                                 const b = Math.max(0, baseRGB[2] - (gIndex * stepRGB[2]));
 
                                 data.cell.styles.fillColor = [r, g, b];
 
-                                // DESTACAR COLUMNA DE CALIFICACIÓN (Columna Index 9)
-                                if (data.column.index === 9) {
+                                // DESTACAR COLUMNA CALIFICACIÓN (Index 10)
+                                if (data.column.index === 10) {
                                     data.cell.styles.fontStyle = 'bold';
                                     if (rowData.evalCount === 0) {
                                         data.cell.styles.fillColor = [241, 245, 249];
                                         data.cell.styles.textColor = [100, 116, 139];
                                     } else {
                                         const roundScore = rowData.roundedGrade;
-                                        if (roundScore <= 5) { // 1 a 5 (en proceso)
+                                        if (roundScore <= 5) {
                                             data.cell.styles.fillColor = [255, 228, 230];
                                             data.cell.styles.textColor = [159, 18, 57];
-                                        } else if (roundScore <= 7) { // 6 a 7 (suficiente)
+                                        } else if (roundScore <= 7) {
                                             data.cell.styles.fillColor = [254, 243, 199];
                                             data.cell.styles.textColor = [146, 64, 14];
-                                        } else { // 8 a 10 (avanzado)
+                                        } else {
                                             data.cell.styles.fillColor = [209, 250, 229];
                                             data.cell.styles.textColor = [6, 95, 70];
                                         }
@@ -2202,10 +2338,9 @@
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
                     doc.save(fileName);
-                    showToast("PDF con formato destacado descargado correctamente", "success");
+                    showToast("PDF descargado correctamente", "success");
                 }
 
-                // EXPORT MATRIX STATISTICS TO PDF (EXCLUSIVO TPS HABILITADOS)
                 function exportMatrixPDF() {
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
@@ -2224,7 +2359,7 @@
                     
                     doc.setFontSize(13);
                     doc.setTextColor(30);
-                    doc.text("Informe Estadístico de Preguntas y Rendimiento por TP (TPs Habilitados)", 14, 40);
+                    doc.text("Informe Estadístico de Preguntas y Rendimiento por TP", 14, 40);
 
                     let currentY = 46;
 
@@ -2256,9 +2391,7 @@
                             theme: 'grid',
                             headStyles: { fillColor: [51, 65, 85] },
                             styles: { fontSize: 8 },
-                            columnStyles: {
-                                1: { cellWidth: 85 }
-                            }
+                            columnStyles: { 1: { cellWidth: 85 } }
                         });
 
                         currentY = doc.lastAutoTable.finalY + 10;
@@ -2268,7 +2401,6 @@
                     showToast("Informe estadístico PDF descargado correctamente", "success");
                 }
 
-                // EXPORT MATRIX STATISTICS TO CSV (TPS HABILITADOS)
                 function exportMatrixCSV() {
                     const headers = ["ID TP", "Nombre TP", "ID Pregunta", "Pregunta", "Frecuencia Evaluada", "Bien (10pt)", "Regular (6pt)", "Mal (1pt)", "% Acierto"];
                     const rows = [];
@@ -2301,7 +2433,6 @@
                     showToast("Matriz estadística exportada a CSV", "success");
                 }
 
-                // BULK CSV STUDENT PARSER
                 function processBulkStudentsCSV(rawText) {
                     if (!rawText || !rawText.trim()) {
                         showToast("Ingresá un texto CSV válido.", "warning");
@@ -2315,13 +2446,7 @@
                         if (parts.length >= 3) {
                             const course = parts[0];
                             const group = parts[1];
-                            let name = '';
-
-                            if (parts.length >= 4 && parts[3]) {
-                                name = `${parts[2]}, ${parts[3]}`;
-                            } else {
-                                name = parts[2];
-                            }
+                            let name = parts.length >= 4 && parts[3] ? `${parts[2]}, ${parts[3]}` : parts[2];
 
                             if (course.toLowerCase().includes('curso') && group.toLowerCase().includes('grupo')) return;
 
@@ -2373,7 +2498,6 @@
                     showToast("Alumno eliminado", "info");
                 }
 
-                // GESTIÓN DE TPS (CSV & MANUAL)
                 function processTpsCSV(rawText) {
                     if (!rawText.trim()) return;
                     const rows = parseCustomCSV(rawText);
@@ -2453,7 +2577,6 @@
                     }
                 }
 
-                // PARSE CSV PREGUNTAS (numero_de_tp, id_pregunta, pregunta)
                 function processQuestionsCSV(rawText) {
                     if (!rawText.trim()) return;
                     const rows = parseCustomCSV(rawText);
@@ -2494,7 +2617,6 @@
                     reader.readAsText(file);
                 }
 
-                // PARSE CSV RESPUESTAS (numero_de_tp, id_respuesta, respuesta)
                 function processAnswersCSV(rawText) {
                     if (!rawText.trim()) return;
                     const rows = parseCustomCSV(rawText);
@@ -2554,7 +2676,6 @@
                     showToast("Banco de preguntas guardado", "success");
                 }
 
-                // BACKUP & RESET FUNCTIONS CON MODAL NATIVO VUE
                 const confirmModal = ref({
                     show: false,
                     title: '',
@@ -2563,18 +2684,11 @@
                 });
 
                 function openConfirmModal(title, message, action) {
-                    confirmModal.value = {
-                        show: true,
-                        title,
-                        message,
-                        action
-                    };
+                    confirmModal.value = { show: true, title, message, action };
                 }
 
                 function executeConfirmAction() {
-                    if (typeof confirmModal.value.action === 'function') {
-                        confirmModal.value.action();
-                    }
+                    if (typeof confirmModal.value.action === 'function') confirmModal.value.action();
                     confirmModal.value.show = false;
                 }
 
@@ -2582,6 +2696,8 @@
                     const data = {
                         appTitle: appTitle.value,
                         appSubtitle: appSubtitle.value,
+                        generalTimerSetMinutes: generalTimerSetMinutes.value,
+                        evalTimerSetMinutes: evalTimerSetMinutes.value,
                         students: students.value,
                         tps: tps.value,
                         questionBank: questionBank.value,
@@ -2606,6 +2722,8 @@
                             const parsed = JSON.parse(e.target.result);
                             if (parsed.appTitle) appTitle.value = parsed.appTitle;
                             if (parsed.appSubtitle) appSubtitle.value = parsed.appSubtitle;
+                            if (parsed.generalTimerSetMinutes) updateGeneralSetMinutes(parsed.generalTimerSetMinutes);
+                            if (parsed.evalTimerSetMinutes) updateEvalDefaultMinutes(parsed.evalTimerSetMinutes);
                             students.value = parsed.students || [];
                             tps.value = parsed.tps || [];
                             questionBank.value = parsed.questionBank || {};
@@ -2625,26 +2743,21 @@
                     wasQuestionCycleReset.value = false;
                     showAnswer.value = false;
                     expandedStudents.value = {};
+                    resetEvalTimer();
                     
                     if (Array.isArray(students.value)) {
-                        students.value.forEach(s => {
-                            s.questionHistory = {};
-                        });
+                        students.value.forEach(s => { s.questionHistory = {}; });
                     }
                     
                     try { localStorage.removeItem('eval_evaluations'); } catch(e){}
                     safeSetStorage('eval_students', students.value);
                     safeSetStorage('eval_evaluations', evaluations.value);
                     
-                    showToast("Planilla de calificaciones vaciada y contadores de ciclo reiniciados.", "success");
+                    showToast("Planilla de calificaciones vaciada y contadores reiniciados.", "success");
                 }
 
                 function confirmClearEvaluations() {
-                    openConfirmModal(
-                        "¿Vaciar Planilla de Calificaciones?",
-                        "Esta acción eliminará de forma permanente todas las notas y evaluaciones registradas y reiniciará los contadores de ciclo de los alumnos.",
-                        doClearEvaluations
-                    );
+                    openConfirmModal("¿Vaciar Planilla de Calificaciones?", "Esta acción eliminará de forma permanente todas las notas y evaluaciones registradas.", doClearEvaluations);
                 }
 
                 function doClearStudents() {
@@ -2654,16 +2767,13 @@
                     selectedStudentId.value = '';
                     currentStudent.value = null;
                     expandedStudents.value = {};
+                    resetEvalTimer();
                     try { localStorage.removeItem('eval_students'); } catch(e){}
                     showToast("Lista de alumnos vaciada con éxito.", "success");
                 }
 
                 function confirmClearStudents() {
-                    openConfirmModal(
-                        "¿Vaciar Lista de Alumnos?",
-                        "Se borrarán todos los estudiantes registrados y sus historiales de preguntas respondidas.",
-                        doClearStudents
-                    );
+                    openConfirmModal("¿Vaciar Lista de Alumnos?", "Se borrarán todos los estudiantes registrados y sus historiales.", doClearStudents);
                 }
 
                 function doClearTps() {
@@ -2675,11 +2785,7 @@
                 }
 
                 function confirmClearTps() {
-                    openConfirmModal(
-                        "¿Vaciar Trabajos Prácticos?",
-                        "Se eliminarán todos los TPs cargados en el sistema.",
-                        doClearTps
-                    );
+                    openConfirmModal("¿Vaciar Trabajos Prácticos?", "Se eliminarán todos los TPs cargados en el sistema.", doClearTps);
                 }
 
                 function doClearQuestions() {
@@ -2690,11 +2796,7 @@
                 }
 
                 function confirmClearQuestions() {
-                    openConfirmModal(
-                        "¿Vaciar Banco de Preguntas?",
-                        "Se borrarán todas las preguntas y respuestas cargadas para todos los TPs.",
-                        doClearQuestions
-                    );
+                    openConfirmModal("¿Vaciar Banco de Preguntas?", "Se borrarán todas las preguntas y respuestas cargadas para todos los TPs.", doClearQuestions);
                 }
 
                 function doResetAll() {
@@ -2712,16 +2814,14 @@
                     appTitle.value = 'Evaluador';
                     appSubtitle.value = 'Laboratorio de Física';
                     activeRound.value = { studentId: '', questions: [] };
+                    resetGeneralTimer();
+                    resetEvalTimer();
                     try { localStorage.clear(); } catch(e){}
                     showToast("Reinicio completo de fábrica realizado.", "success");
                 }
 
                 function confirmResetData() {
-                    openConfirmModal(
-                        "¿RESET COMPLETO DE FÁBRICA?",
-                        "¡Atención! Se eliminarán absolutamente TODOS los alumnos, TPs, preguntas, títulos y calificaciones guardadas.",
-                        doResetAll
-                    );
+                    openConfirmModal("¿RESET COMPLETO DE FÁBRICA?", "¡Atención! Se eliminarán absolutamente TODOS los alumnos, TPs, preguntas, títulos, temporizadores y calificaciones guardadas.", doResetAll);
                 }
 
                 return {
@@ -2773,6 +2873,24 @@
                     activeRoundTotalPoints,
                     activeRoundGrade10,
                     finishSummary,
+                    generalTimerSetMinutes,
+                    generalTimerSeconds,
+                    generalTimerRunning,
+                    toggleGeneralTimer,
+                    resetGeneralTimer,
+                    updateGeneralSetMinutes,
+                    generalTimerBadgeClass,
+                    evalTimerSetMinutes,
+                    evalTimerElapsed,
+                    evalTimerLimit,
+                    evalTimerRunning,
+                    toggleEvalTimer,
+                    resetEvalTimer,
+                    addOneMinuteToEval,
+                    updateEvalDefaultMinutes,
+                    evalTimerFormattedRemaining,
+                    evalTimerBadgeClass,
+                    formatMMSS,
                     onCourseOrGroupChange,
                     loadStudentData,
                     selectTP,
