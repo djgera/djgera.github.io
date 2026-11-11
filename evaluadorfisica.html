@@ -21,6 +21,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
+    <!-- Chart.js CDN para Dashboard Visual -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -124,6 +127,14 @@
                             class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
                             <i class="fa-solid fa-table-list"></i>
                             <span>Planilla</span>
+                        </button>
+
+                        <button 
+                            @click="activeTab = 'dashboard'"
+                            :class="activeTab === 'dashboard' ? 'bg-brand-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+                            class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>Dashboard</span>
                         </button>
 
                         <button 
@@ -575,12 +586,17 @@
                                 <span>Exportar Excel (CSV)</span>
                             </button>
                             
-                            <button @click="exportStudentsPDF(historyFilterCourse)" :disabled="!historyFilterCourse" :class="historyFilterCourse ? 'bg-brand-600 hover:bg-brand-700' : 'bg-slate-300 opacity-60 cursor-not-allowed'" class="px-3.5 py-2 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
+                            <label class="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 cursor-pointer border border-slate-200 transition">
+                                <input type="checkbox" v-model="includeChartsInPDF" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4">
+                                <span>Incluir Portada Gráfica</span>
+                            </label>
+
+                            <button @click="exportStudentsPDF(historyFilterCourse, includeChartsInPDF)" :disabled="!historyFilterCourse" :class="historyFilterCourse ? 'bg-brand-600 hover:bg-brand-700' : 'bg-slate-300 opacity-60 cursor-not-allowed'" class="px-3.5 py-2 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
                                 <i class="fa-solid fa-file-pdf"></i>
                                 <span>PDF Curso Seleccionado</span>
                             </button>
 
-                            <button @click="exportStudentsPDF(null)" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
+                            <button @click="exportStudentsPDF(null, includeChartsInPDF)" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow">
                                 <i class="fa-solid fa-file-pdf"></i>
                                 <span>PDF General (Todos los Cursos)</span>
                             </button>
@@ -856,6 +872,162 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- TAB DASHBOARD: VISUALIZACIONES & GRÁFICOS INTERACTIVOS -->
+            <section v-if="activeTab === 'dashboard'" class="space-y-6">
+                <!-- Header Dashboard -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center text-xl shadow-md">
+                                <i class="fa-solid fa-chart-pie"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Dashboard de Rendimiento & Estadísticas Visuales</h2>
+                                <p class="text-xs text-slate-500">Análisis gráfico interactivo de promedios, calificaciones conceptuales y rendimiento por TP.</p>
+                            </div>
+                        </div>
+
+                        <!-- Acciones Exportar PDF con Gráficos -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 cursor-pointer border border-slate-200 transition">
+                                <input type="checkbox" v-model="includeChartsInPDF" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4">
+                                <span>Incluir Portada Gráfica en PDF</span>
+                            </label>
+
+                            <button @click="exportStudentsPDF(dashboardCourse, includeChartsInPDF)" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow-md">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Exportar PDF {{ dashboardCourse ? '(' + dashboardCourse + ')' : 'General' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro Dinámico por Curso & Tarjetas Rápidas -->
+                    <div class="flex items-center space-x-3 pt-2 border-t border-slate-100">
+                        <label class="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-filter text-brand-500"></i>
+                            <span>Filtrar Gráficos por Curso:</span>
+                        </label>
+                        <select v-model="dashboardCourse" @change="renderDashboardCharts" class="bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-brand-500">
+                            <option value="">📌 Todos los Cursos (Consolidado General)</option>
+                            <option v-for="c in courses" :key="c" :value="c">Curso: {{ c }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- CARDS DE MÉTRICAS RÁPIDAS -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Alumnos</span>
+                            <span class="text-2xl font-black text-slate-900">{{ dashboardMetrics.totalStudents }}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Alumnos Evaluados</span>
+                            <span class="text-2xl font-black text-emerald-600">{{ dashboardMetrics.evaluatedStudents }} <span class="text-xs font-semibold text-slate-400">({{ dashboardMetrics.evaluatedPct }}%)</span></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-award"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Promedio General</span>
+                            <span class="text-2xl font-black text-amber-600">{{ dashboardMetrics.globalAvgGrade }} <span class="text-xs font-semibold text-slate-400">/ 10</span></span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-solid fa-comments"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Preguntas Evaluadas</span>
+                            <span class="text-2xl font-black text-purple-600">{{ dashboardMetrics.totalQuestionsEvaluated }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRILLA DE GRÁFICOS (5 VISUALIZACIONES) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- Chart 1: Calificaciones Conceptuales (Doughnut) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-pie text-brand-500"></i>
+                                <span>1. Nivel de Logro (Calificaciones Conceptuales)</span>
+                            </h3>
+                        </div>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="chartCalifCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Estado Cierre de Etapa (Donut) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-notch text-brand-500"></i>
+                                <span>2. Estado de Cierre de Etapa Alumnos</span>
+                            </h3>
+                        </div>
+                        <div class="h-64 relative flex items-center justify-center">
+                            <canvas id="chartCierreCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 3: Distribución de Notas Promedio 1 a 10 (Bar) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-simple text-brand-500"></i>
+                                <span>3. Distribución de Notas Promedio (1 a 10)</span>
+                            </h3>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="chartNotasCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 4: % Acierto por TP (Horizontal Bar) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                                <i class="fa-solid fa-list-check text-brand-500"></i>
+                                <span>4. % de Acierto por Trabajo Práctico Habilitado</span>
+                            </h3>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="chartTpsCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 5: Desglose de Respuestas Bien/Reg/Mal (Stacked Bar) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-2">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-column text-brand-500"></i>
+                                <span>5. Desglose de Respuestas (Bien / Regular / Mal) {{ dashboardCourse ? 'por Grupo en ' + dashboardCourse : 'por Curso' }}</span>
+                            </h3>
+                        </div>
+                        <div class="h-72 relative">
+                            <canvas id="chartRespuestasCanvas"></canvas>
+                        </div>
+                    </div>
+
+                </div>
             </section>
 
             <!-- TAB 3: MATRIZ ESTADÍSTICA POR TP Y PREGUNTA (SÓLO TPS HABILITADOS) -->
@@ -1394,7 +1566,7 @@
 
     <!-- VUE 3 APPLICATION SCRIPT -->
     <script>
-        const { createApp, ref, computed, watch, onUnmounted } = Vue;
+        const { createApp, ref, computed, watch, onUnmounted, nextTick } = Vue;
 
         // HELPER CONFORME A RFC-4180 PARA PARSEAR CSV
         function parseCustomCSV(text) {
@@ -1502,6 +1674,16 @@
                 watch(tps, val => safeSetStorage('eval_tps', val), { deep: true });
                 watch(questionBank, val => safeSetStorage('eval_questionBank', val), { deep: true });
                 watch(evaluations, val => safeSetStorage('eval_evaluations', val), { deep: true });
+
+                // ESTADO DASHBOARD & GRÁFICOS
+                const dashboardCourse = ref('');
+                const includeChartsInPDF = ref(true);
+
+                let chartCalifInstance = null;
+                let chartCierreInstance = null;
+                let chartNotasInstance = null;
+                let chartTpsInstance = null;
+                let chartRespuestasInstance = null;
 
                 // ⏱️ ESTADO DEL TEMPORIZADOR GENERAL DE LA JORNADA
                 const generalTimerSetMinutes = ref(safeGetStorage('eval_genTimerMinutes', 60));
@@ -1886,14 +2068,12 @@
                     filtered.sort((a, b) => {
                         if (sortColumn.value === 'default') {
                             if (!historyFilterCourse.value) {
-                                // Todos los cursos -> 1° Curso, 2° Nombre y Apellido
                                 const cComp = (a.course || '').localeCompare(b.course || '', undefined, { numeric: true, sensitivity: 'base' });
                                 if (cComp !== 0) return sortOrder.value === 'asc' ? cComp : -cComp;
 
                                 const nComp = (a.studentName || '').localeCompare(b.studentName || '', undefined, { sensitivity: 'base' });
                                 return sortOrder.value === 'asc' ? nComp : -nComp;
                             } else {
-                                // Un solo curso -> Orden por Nombre y Apellido
                                 const nComp = (a.studentName || '').localeCompare(b.studentName || '', undefined, { sensitivity: 'base' });
                                 return sortOrder.value === 'asc' ? nComp : -nComp;
                             }
@@ -1919,6 +2099,36 @@
                     });
 
                     return filtered;
+                });
+
+                // MÉTRICAS Y DATOS DASHBOARD
+                const dashboardMetrics = computed(() => {
+                    let list = groupedEvaluations.value;
+                    if (dashboardCourse.value) {
+                        list = list.filter(st => st.course === dashboardCourse.value);
+                    }
+
+                    const totalStudents = list.length;
+                    const evaluatedList = list.filter(st => st.evalCount > 0);
+                    const evaluatedStudents = evaluatedList.length;
+                    const evaluatedPct = totalStudents > 0 ? Math.round((evaluatedStudents / totalStudents) * 100) : 0;
+
+                    let totalSum = 0;
+                    let totalQuestionsEvaluated = 0;
+                    evaluatedList.forEach(st => {
+                        totalSum += st.avgGrade;
+                        totalQuestionsEvaluated += st.evalCount;
+                    });
+
+                    const globalAvgGrade = evaluatedStudents > 0 ? (totalSum / evaluatedStudents).toFixed(1) : '-';
+
+                    return {
+                        totalStudents,
+                        evaluatedStudents,
+                        evaluatedPct,
+                        globalAvgGrade,
+                        totalQuestionsEvaluated
+                    };
                 });
 
                 const tpStatistics = computed(() => {
@@ -1989,6 +2199,218 @@
                         };
                     });
                 });
+
+                // LÓGICA DE RENDERIZADO CHART.JS
+                function renderDashboardCharts() {
+                    if (activeTab.value !== 'dashboard') return;
+
+                    let list = groupedEvaluations.value;
+                    if (dashboardCourse.value) {
+                        list = list.filter(st => st.course === dashboardCourse.value);
+                    }
+
+                    // --- 1. Calificaciones Conceptuales ---
+                    let califCounts = { 'Avanzado (8-10)': 0, 'Suficiente (6-7)': 0, 'En Proceso (1-5)': 0, 'Sin Evaluar': 0 };
+                    list.forEach(st => {
+                        if (st.evalCount === 0) califCounts['Sin Evaluar']++;
+                        else {
+                            const r = st.roundedGrade;
+                            if (r >= 8) califCounts['Avanzado (8-10)']++;
+                            else if (r >= 6) califCounts['Suficiente (6-7)']++;
+                            else califCounts['En Proceso (1-5)']++;
+                        }
+                    });
+
+                    const ctx1 = document.getElementById('chartCalifCanvas');
+                    if (ctx1) {
+                        if (chartCalifInstance) chartCalifInstance.destroy();
+                        chartCalifInstance = new Chart(ctx1, {
+                            type: 'doughnut',
+                            data: {
+                                labels: Object.keys(califCounts),
+                                datasets: [{
+                                    data: Object.values(califCounts),
+                                    backgroundColor: ['#10b981', '#f59e0b', '#f43f5e', '#cbd5e1'],
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+                            }
+                        });
+                    }
+
+                    // --- 2. Cierre de Etapa ---
+                    let cierreCounts = { '🔓 En Curso / Abierto': 0, '📋 Cierre Parcial': 0, '🎓 Cierre Final': 0 };
+                    list.forEach(st => {
+                        const state = st.closureState || 'Abierto';
+                        if (state === 'Final') cierreCounts['🎓 Cierre Final']++;
+                        else if (state === 'Parcial') cierreCounts['📋 Cierre Parcial']++;
+                        else cierreCounts['🔓 En Curso / Abierto']++;
+                    });
+
+                    const ctx2 = document.getElementById('chartCierreCanvas');
+                    if (ctx2) {
+                        if (chartCierreInstance) chartCierreInstance.destroy();
+                        chartCierreInstance = new Chart(ctx2, {
+                            type: 'doughnut',
+                            data: {
+                                labels: Object.keys(cierreCounts),
+                                datasets: [{
+                                    data: Object.values(cierreCounts),
+                                    backgroundColor: ['#0284c7', '#d97706', '#059669'],
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+                            }
+                        });
+                    }
+
+                    // --- 3. Distribución Notas (1 a 10) ---
+                    const notasDist = Array(10).fill(0);
+                    list.forEach(st => {
+                        if (st.evalCount > 0) {
+                            const score = Math.min(10, Math.max(1, Math.round(st.avgGrade)));
+                            notasDist[score - 1]++;
+                        }
+                    });
+
+                    const ctx3 = document.getElementById('chartNotasCanvas');
+                    if (ctx3) {
+                        if (chartNotasInstance) chartNotasInstance.destroy();
+                        chartNotasInstance = new Chart(ctx3, {
+                            type: 'bar',
+                            data: {
+                                labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                                datasets: [{
+                                    label: 'Cantidad de Alumnos',
+                                    data: notasDist,
+                                    backgroundColor: ['#f43f5e','#f43f5e','#f43f5e','#f43f5e','#f43f5e','#f59e0b','#f59e0b','#10b981','#10b981','#10b981'],
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                            }
+                        });
+                    }
+
+                    // --- 4. % Acierto por TP Habilitado ---
+                    const tpLabels = tpStatistics.value.map(t => `TP ${t.id}`);
+                    const tpRates = tpStatistics.value.map(t => {
+                        let sumPts = 0, count = 0;
+                        evaluations.value.forEach(ev => {
+                            if (dashboardCourse.value && ev.course !== dashboardCourse.value) return;
+                            if (Array.isArray(ev.details)) {
+                                ev.details.forEach(d => {
+                                    if (parseInt(d.tp) === t.id) {
+                                        sumPts += getPointsFromGrade(d.label, d.score);
+                                        count++;
+                                    }
+                                });
+                            }
+                        });
+                        return count > 0 ? Math.round((sumPts / (count * 10)) * 100) : 0;
+                    });
+
+                    const ctx4 = document.getElementById('chartTpsCanvas');
+                    if (ctx4) {
+                        if (chartTpsInstance) chartTpsInstance.destroy();
+                        chartTpsInstance = new Chart(ctx4, {
+                            type: 'bar',
+                            data: {
+                                labels: tpLabels.length > 0 ? tpLabels : ['Sin TPs'],
+                                datasets: [{
+                                    label: '% Acierto',
+                                    data: tpRates.length > 0 ? tpRates : [0],
+                                    backgroundColor: '#0284c7',
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { min: 0, max: 100 } }
+                            }
+                        });
+                    }
+
+                    // --- 5. Desglose de Respuestas (Bien / Regular / Mal) por Curso o Grupo ---
+                    const subCategories = dashboardCourse.value ? groups.value : courses.value;
+                    const bienCounts = [];
+                    const regCounts = [];
+                    const malCounts = [];
+
+                    subCategories.forEach(cat => {
+                        let b = 0, r = 0, m = 0;
+                        evaluations.value.forEach(ev => {
+                            if (dashboardCourse.value) {
+                                if (ev.course !== dashboardCourse.value || ev.group !== cat) return;
+                            } else {
+                                if (ev.course !== cat) return;
+                            }
+
+                            if (Array.isArray(ev.details)) {
+                                ev.details.forEach(d => {
+                                    const pts = getPointsFromGrade(d.label, d.score);
+                                    if (pts === 10) b++;
+                                    else if (pts === 6) r++;
+                                    else m++;
+                                });
+                            }
+                        });
+                        bienCounts.push(b);
+                        regCounts.push(r);
+                        malCounts.push(m);
+                    });
+
+                    const ctx5 = document.getElementById('chartRespuestasCanvas');
+                    if (ctx5) {
+                        if (chartRespuestasInstance) chartRespuestasInstance.destroy();
+                        chartRespuestasInstance = new Chart(ctx5, {
+                            type: 'bar',
+                            data: {
+                                labels: subCategories.length > 0 ? subCategories : ['Sin datos'],
+                                datasets: [
+                                    { label: 'Bien (10pt)', data: bienCounts, backgroundColor: '#10b981', borderRadius: 4 },
+                                    { label: 'Regular (6pt)', data: regCounts, backgroundColor: '#f59e0b', borderRadius: 4 },
+                                    { label: 'Mal (1pt)', data: malCounts, backgroundColor: '#f43f5e', borderRadius: 4 }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'top' } },
+                                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+                            }
+                        });
+                    }
+                }
+
+                watch(activeTab, (newTab) => {
+                    if (newTab === 'dashboard') {
+                        nextTick(() => renderDashboardCharts());
+                    }
+                });
+
+                watch([students, evaluations, tps], () => {
+                    if (activeTab.value === 'dashboard') {
+                        nextTick(() => renderDashboardCharts());
+                    }
+                }, { deep: true });
 
                 function toggleSort(col) {
                     if (sortColumn.value === col) {
@@ -2295,8 +2717,8 @@
                     showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // EXPORTAR PDF ALUMNOS (FILAS SIN SALTO CORTE Y CALIFICACIÓN EN 2 LÍNEAS)
-                function exportStudentsPDF(courseFilter = null) {
+                // EXPORTAR PDF ALUMNOS (CON PORTADA GRÁFICA OPCIONAL)
+                function exportStudentsPDF(courseFilter = null, includeCharts = false) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
                         return;
@@ -2318,7 +2740,49 @@
                         return;
                     }
 
-                    // Agrupar estudiantes por curso
+                    // --- HOJA 1: PORTADA EJECUTIVA CON GRÁFICOS (SI CORRESPONDE) ---
+                    if (includeCharts) {
+                        // Forzar renderizado previo por si no estaba en la pestaña Dashboard
+                        dashboardCourse.value = courseFilter || '';
+                        renderDashboardCharts();
+
+                        doc.setFontSize(18);
+                        doc.setTextColor(2, 132, 199);
+                        doc.text(title, 10, 15);
+                        
+                        doc.setFontSize(10);
+                        doc.setTextColor(100);
+                        doc.text(`${subtitle} - Reporte Ejecutivo Visual`, 10, 22);
+                        doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`, 10, 27);
+
+                        if (courseFilter) {
+                            doc.setFontSize(11);
+                            doc.setTextColor(30);
+                            doc.text(`Filtro Aplicado: Curso ${courseFilter}`, 10, 33);
+                        }
+
+                        // Capturar imágenes canvas en 2x2
+                        const c1 = document.getElementById('chartCalifCanvas');
+                        const c2 = document.getElementById('chartCierreCanvas');
+                        const c3 = document.getElementById('chartNotasCanvas');
+                        const c4 = document.getElementById('chartTpsCanvas');
+
+                        if (c1 && c2 && c3 && c4) {
+                            try {
+                                doc.addImage(c1.toDataURL('image/png'), 'PNG', 10, 38, 92, 60);
+                                doc.addImage(c2.toDataURL('image/png'), 'PNG', 108, 38, 92, 60);
+                                doc.addImage(c3.toDataURL('image/png'), 'PNG', 10, 105, 92, 60);
+                                doc.addImage(c4.toDataURL('image/png'), 'PNG', 108, 105, 92, 60);
+                            } catch (e) {
+                                console.log("No se pudieron capturar canvas para el PDF", e);
+                            }
+                        }
+
+                        // Agregar salto a las tablas de nómina
+                        doc.addPage();
+                    }
+
+                    // --- TABLAS POR CURSO ---
                     const coursesMap = {};
                     targetSummaries.forEach(st => {
                         const c = st.course || 'Sin Curso';
@@ -2338,7 +2802,6 @@
                     ];
 
                     courseKeys.forEach((cKey, cIndex) => {
-                        // Salto de página para cada nuevo curso
                         if (cIndex > 0) {
                             doc.addPage();
                         }
@@ -2346,7 +2809,6 @@
                         const courseStudents = coursesMap[cKey];
                         const reportTitle = `Reporte de Calificaciones - Curso: ${cKey}`;
 
-                        // Header e info con margen reducido a 10 mm
                         doc.setFontSize(16);
                         doc.setTextColor(2, 132, 199);
                         doc.text(title, 10, 14);
@@ -2416,12 +2878,10 @@
 
                                     data.cell.styles.fillColor = [r, g, b];
 
-                                    // Centrar horizontalmente Promedio (8), Calificación (9) y Cierre (10)
                                     if (data.column.index === 8 || data.column.index === 9 || data.column.index === 10) {
                                         data.cell.styles.halign = 'center';
                                     }
 
-                                    // Columna Calificación (Index 9)
                                     if (data.column.index === 9) {
                                         data.cell.styles.fontStyle = 'bold';
                                         data.cell.styles.fontSize = 7;
@@ -2443,7 +2903,6 @@
                                         }
                                     }
 
-                                    // Columna Cierre (Index 10)
                                     if (data.column.index === 10) {
                                         data.cell.styles.fontStyle = 'bold';
                                         data.cell.styles.fontSize = 7.5;
@@ -2980,6 +3439,10 @@
                     sortColumn,
                     sortOrder,
                     groupedEvaluations,
+                    dashboardCourse,
+                    includeChartsInPDF,
+                    dashboardMetrics,
+                    renderDashboardCharts,
                     newStudent,
                     bulkStudentsText,
                     tpsCSVText,
