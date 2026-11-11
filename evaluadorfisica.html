@@ -1467,7 +1467,7 @@
                 watch(evaluations, val => safeSetStorage('eval_evaluations', val), { deep: true });
 
                 // ⏱️ ESTADO DEL TEMPORIZADOR GENERAL DE LA JORNADA
-                const generalTimerSetMinutes = ref(safeGetStorage('eval_genTimerMinutes', 120));
+                const generalTimerSetMinutes = ref(safeGetStorage('eval_genTimerMinutes', 60));
                 const generalTimerSeconds = ref(generalTimerSetMinutes.value * 60);
                 const generalTimerRunning = ref(false);
                 let generalTimerInterval = null;
@@ -1509,7 +1509,7 @@
                 });
 
                 // ⏳ ESTADO DEL TEMPORIZADOR INDIVIDUAL POR SESIÓN DE ALUMNO
-                const evalTimerSetMinutes = ref(safeGetStorage('eval_evalTimerMinutes', 5));
+                const evalTimerSetMinutes = ref(safeGetStorage('eval_evalTimerMinutes', 10));
                 const evalTimerElapsed = ref(0);
                 const evalTimerLimit = ref(evalTimerSetMinutes.value * 60);
                 const evalTimerRunning = ref(false);
