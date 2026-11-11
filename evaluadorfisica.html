@@ -2356,12 +2356,15 @@
                         }
                     });
 
-                    // FORMATO EN 2 LÍNEAS PARA LA COLUMNA DE CALIFICACIÓN (NÚMERO ARRIBA, CONCEPTO ABAJO)
                     const tableBody = targetSummaries.map(st => {
-                        const califText = getCalificacionText(st.avgGrade, st.evalCount);
-                        const califFormatted = st.evalCount > 0 
-                            ? `${st.avgGrade} / 10\n${califText}` 
-                            : 'Sin evaluar';
+                        let califFormatted = '-';
+                        if (st.evalCount > 0) {
+                            const roundScore = Math.round(st.avgGrade);
+                            let conc = 'en proceso';
+                            if (roundScore > 7) conc = 'avanzado';
+                            else if (roundScore > 5) conc = 'suficiente';
+                            califFormatted = `${roundScore}\n(${conc})`;
+                        }
 
                         return [
                             st.studentName,
@@ -2373,7 +2376,7 @@
                             st.bienCount,
                             st.regularCount,
                             st.malCount,
-                            st.evalCount > 0 ? st.avgGrade : 'Sin evaluar',
+                            st.evalCount > 0 ? st.avgGrade : '-',
                             califFormatted
                         ];
                     });
@@ -2403,9 +2406,15 @@
 
                                 data.cell.styles.fillColor = [r, g, b];
 
-                                // DESTACAR COLUMNA CALIFICACIÓN (Index 10)
+                                // Centrar Promedio y Calificación
+                                if (data.column.index === 9 || data.column.index === 10) {
+                                    data.cell.styles.halign = 'center';
+                                }
+
+                                // Destacar columna Calificación (Index 10)
                                 if (data.column.index === 10) {
                                     data.cell.styles.fontStyle = 'bold';
+                                    data.cell.styles.fontSize = 7;
                                     if (rowData.evalCount === 0) {
                                         data.cell.styles.fillColor = [241, 245, 249];
                                         data.cell.styles.textColor = [100, 116, 139];
