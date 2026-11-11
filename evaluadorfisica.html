@@ -383,8 +383,23 @@
                     </div>
                 </div>
 
+                <!-- BANNER DE ESPERA ANTES DE INICIAR EVALUACIÓN -->
+                <div v-if="currentStudent && selectedTpItem && !evalTimerRunning && evalTimerElapsed === 0" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 text-center space-y-3 shadow-sm">
+                    <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-1">
+                        <i class="fa-solid fa-play"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-amber-900">Evaluación Lista para Iniciar</h3>
+                    <p class="text-xs text-amber-700 max-w-md mx-auto">
+                        Haz clic en <strong>"▶ Comenzar Evaluación"</strong> para iniciar el temporizador del examen oral y revelar la pregunta seleccionada.
+                    </p>
+                    <button @click="toggleEvalTimer" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition inline-flex items-center space-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>▶ Comenzar Evaluación</span>
+                    </button>
+                </div>
+
                 <!-- PREGUNTA ACTUAL Y PANEL DE CALIFICACIÓN -->
-                <div v-if="currentStudent && currentQuestionItem && selectedTpItem" class="bg-white rounded-2xl p-6 shadow-md border border-slate-200 space-y-6">
+                <div v-if="currentStudent && currentQuestionItem && selectedTpItem && (evalTimerRunning || evalTimerElapsed > 0)" class="bg-white rounded-2xl p-6 shadow-md border border-slate-200 space-y-6">
                     
                     <!-- Header Card Pregunta -->
                     <div class="flex items-center justify-between gap-4 flex-wrap">
