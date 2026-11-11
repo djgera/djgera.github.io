@@ -2388,8 +2388,8 @@
                         theme: 'grid',
                         pageBreak: 'avoid',
                         rowPageBreak: 'avoid',
-                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
-                        styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak' },
+                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
+                        styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak', valign: 'middle' },
                         didParseCell: function(data) {
                             if (data.section === 'body') {
                                 const rowData = targetSummaries[data.row.index];
@@ -2406,12 +2406,12 @@
 
                                 data.cell.styles.fillColor = [r, g, b];
 
-                                // Centrar Promedio y Calificación
+                                // Centrar horizontalmente Promedio y Calificación
                                 if (data.column.index === 9 || data.column.index === 10) {
                                     data.cell.styles.halign = 'center';
                                 }
 
-                                // Destacar columna Calificación (Index 10)
+                                // Estilos específicos para la columna Calificación (Index 10)
                                 if (data.column.index === 10) {
                                     data.cell.styles.fontStyle = 'bold';
                                     data.cell.styles.fontSize = 7;
