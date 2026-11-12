@@ -1841,13 +1841,45 @@
             });
 
             // 3. Distribución
-            drawCardBox(col1X, boxY2, boxW, boxH, "3. Distribución de Notas (1 a 10)");
+            const fullBoxW = 186;
+            drawCardBox(col1X, boxY2, fullBoxW, boxH, "3. Distribución de Notas (1 a 10)");
             const notasDist = Array(10).fill(0);
             targetSummaries.forEach(st => {
                 if (st.evalCount > 0) {
                     const score = Math.min(10, Math.max(1, Math.round(st.avgGrade)));
                     notasDist[score - 1]++;
                 }
+            });
+
+            const maxNotaCount = Math.max(...notasDist, 1);
+            const chartBaseY = boxY2 + 50;
+            const maxBarH = 34;
+
+            doc.setDrawColor(203, 213, 225);
+            doc.line(col1X + 10, chartBaseY, col1X + fullBoxW - 10, chartBaseY);
+
+            notasDist.forEach((cnt, idx) => {
+                const barX = col1X + 16 + idx * 16;
+                const barW = 10;
+                const barH = (cnt / maxNotaCount) * maxBarH;
+
+                let color = [244, 63, 94];
+                if (idx >= 5 && idx <= 6) color = [245, 158, 11];
+                else if (idx >= 7) color = [16, 185, 129];
+
+                if (cnt > 0) {
+                    doc.setFillColor(...color);
+                    doc.roundedRect(barX, chartBaseY - barH, barW, barH, 1.5, 1.5, 'F');
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(30, 41, 59);
+                    doc.text(`${cnt}`, barX + barW/2, chartBaseY - barH - 1.5, { align: 'center' });
+                }
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`${idx + 1}`, barX + barW/2, chartBaseY + 4.5, { align: 'center' });
             });
 
             const maxNotaCount = Math.max(...notasDist, 1);
@@ -1880,43 +1912,6 @@
                 doc.setTextColor(100, 116, 139);
                 doc.text(`${idx + 1}`, barX + barW/2, chartBaseY + 4, { align: 'center' });
             });
-
-            // 4. % TPs
-            drawCardBox(col2X, boxY2, boxW, boxH, "4. % Acierto por TP Habilitado");
-            const tpsList = (tpStatsList || []).slice(0, 4);
-            if (tpsList.length === 0) {
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(148, 163, 184);
-                doc.text("Sin datos de TPs habilitados", col2X + 20, boxY2 + 30);
-            } else {
-                tpsList.forEach((tp, idx) => {
-                    const ry = boxY2 + 13 + idx * 11;
-                    const rate = parseInt(tp.tpAvgGrade10 ? Math.round(parseFloat(tp.tpAvgGrade10)*10) : 0) || 0;
-                    
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(7.5);
-                    doc.setTextColor(51, 65, 85);
-                    const labelStr = `TP ${tp.id}: ${tp.name.length > 18 ? tp.name.substring(0, 17) + '...' : tp.name}`;
-                    doc.text(labelStr, col2X + 4, ry + 4);
-
-                    const barX = col2X + 46;
-                    const barW = 32;
-                    doc.setFillColor(241, 245, 249);
-                    doc.roundedRect(barX, ry, barW, 5, 1.5, 1.5, 'F');
-
-                    const fillW = (rate / 100) * barW;
-                    if (fillW > 0) {
-                        doc.setFillColor(2, 132, 199);
-                        doc.roundedRect(barX, ry, fillW, 5, 1.5, 1.5, 'F');
-                    }
-
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(7);
-                    doc.setTextColor(30, 41, 59);
-                    doc.text(`${rate}%`, col2X + 80, ry + 4);
-                });
-            }
 
             const footY = boxY2 + 66;
             doc.setFillColor(248, 250, 252);
