@@ -1567,6 +1567,23 @@
     <!-- VUE 3 APPLICATION SCRIPT -->
     <script>
         const { createApp, ref, computed, watch, onUnmounted, onMounted, nextTick } = Vue;
+
+        // HELPER PARA EXPORTAR GRÁFICOS EN ALTA RESOLUCIÓN (300+ DPI)
+        function getCrispChartDataURL(chartInstance, targetWidth = 1840, targetHeight = 1200) {
+            if (!chartInstance || !chartInstance.canvas) return null;
+            const originalCanvas = chartInstance.canvas;
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = targetWidth;
+            offscreenCanvas.height = targetHeight;
+            const ctx = offscreenCanvas.getContext('2d');
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, targetWidth, targetHeight);
+            
+            ctx.drawImage(originalCanvas, 0, 0, targetWidth, targetHeight);
+            return offscreenCanvas.toDataURL('image/png', 1.0);
+        }
+
         // PLUGIN REGISTRATION FOR CHART.JS (SOLID WHITE BACKGROUND)
         const whiteCanvasBg = {
             id: 'whiteCanvasBg',
@@ -1690,7 +1707,7 @@
 
                 // ESTADO DASHBOARD & GRÁFICOS
                 const dashboardCourse = ref('');
-                const includeChartsInPDF = ref(true);
+                const includeChartsInPDF = ref(false);
 
                 let chartCalifInstance = null;
                 let chartCierreInstance = null;
@@ -2229,13 +2246,6 @@
                         list = list.filter(st => st.course === dashboardCourse.value);
                     }
 
-                    // Configuración compartida con animación desactivada
-                    const baseOptions = {
-                        animation: false,
-                        responsive: true,
-                        maintainAspectRatio: false
-                    };
-
                     // --- 1. Calificaciones Conceptuales ---
                     let califCounts = { 'Avanzado (8-10)': 0, 'Suficiente (6-7)': 0, 'En Proceso (1-5)': 0, 'Sin Evaluar': 0 };
                     list.forEach(st => {
@@ -2262,7 +2272,11 @@
                                     borderColor: '#ffffff'
                                 }]
                             },
-                            options: { ...baseOptions, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+                            }
                         });
                     }
 
@@ -2289,7 +2303,11 @@
                                     borderColor: '#ffffff'
                                 }]
                             },
-                            options: { ...baseOptions, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+                            }
                         });
                     }
 
@@ -2316,7 +2334,12 @@
                                     borderRadius: 6
                                 }]
                             },
-                            options: { ...baseOptions, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                            }
                         });
                     }
 
@@ -2352,13 +2375,21 @@
                                     borderRadius: 6
                                 }]
                             },
-                            options: { ...baseOptions, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } } }
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { x: { min: 0, max: 100 } }
+                            }
                         });
                     }
 
-                    // --- 5. Desglose de Respuestas por Curso o Grupo ---
+                    // --- 5. Desglose de Respuestas (Bien / Regular / Mal) por Curso o Grupo ---
                     const subCategories = dashboardCourse.value ? groups.value : courses.value;
-                    const bienCounts = [], regCounts = [], malCounts = [];
+                    const bienCounts = [];
+                    const regCounts = [];
+                    const malCounts = [];
 
                     subCategories.forEach(cat => {
                         let b = 0, r = 0, m = 0;
@@ -2396,7 +2427,12 @@
                                     { label: 'Mal (1pt)', data: malCounts, backgroundColor: '#f43f5e', borderRadius: 4 }
                                 ]
                             },
-                            options: { ...baseOptions, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { position: 'top' } },
+                                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+                            }
                         });
                     }
                 }
@@ -2727,6 +2763,7 @@
 
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
+
                     const title = appTitle.value || 'Evaluador';
                     const subtitle = appSubtitle.value || 'Laboratorio de Física';
 
@@ -2740,17 +2777,11 @@
                         return;
                     }
 
-                    // Si se incluye portada con gráficos y estamos en otra pestaña, conmutamos un instante al Dashboard
-                    const originalTab = activeTab.value;
+                    // --- HOJA 1: PORTADA EJECUTIVA CON GRÁFICOS (SI CORRESPONDE) ---
                     if (includeCharts) {
-                        if (activeTab.value !== 'dashboard') {
-                            activeTab.value = 'dashboard';
-                            await nextTick();
-                            await new Promise(res => setTimeout(res, 100));
-                        }
-
+                        // Forzar renderizado previo por si no estaba en la pestaña Dashboard
                         dashboardCourse.value = courseFilter || '';
-                        renderDashboardCharts(true);
+                        renderDashboardCharts();
 
                         doc.setFontSize(18);
                         doc.setTextColor(2, 132, 199);
@@ -2767,32 +2798,26 @@
                             doc.text(`Filtro Aplicado: Curso ${courseFilter}`, 10, 33);
                         }
 
-                        const c1 = document.getElementById('chartCalifCanvas');
-                        const c2 = document.getElementById('chartCierreCanvas');
-                        const c3 = document.getElementById('chartNotasCanvas');
-                        const c4 = document.getElementById('chartTpsCanvas');
+                        // Capturar imágenes canvas en 2x2
+                        const img1 = getCrispChartDataURL(chartCalifInstance, 1840, 1200);
+                        const img2 = getCrispChartDataURL(chartCierreInstance, 1840, 1200);
+                        const img3 = getCrispChartDataURL(chartNotasInstance, 1840, 1200);
+                        const img4 = getCrispChartDataURL(chartTpsInstance, 1840, 1200);
 
-                        if (c1 && c2 && c3 && c4) {
-                            try {
-                                doc.addImage(c1.toDataURL('image/png'), 'PNG', 10, 38, 92, 60);
-                                doc.addImage(c2.toDataURL('image/png'), 'PNG', 108, 38, 92, 60);
-                                doc.addImage(c3.toDataURL('image/png'), 'PNG', 10, 105, 92, 60);
-                                doc.addImage(c4.toDataURL('image/png'), 'PNG', 108, 105, 92, 60);
-                            } catch (e) {
-                                console.log("No se pudieron capturar canvas para el PDF", e);
-                            }
+                        try {
+                            if (img1) doc.addImage(img1, 'PNG', 10, 38, 92, 60, undefined, 'FAST');
+                            if (img2) doc.addImage(img2, 'PNG', 108, 38, 92, 60, undefined, 'FAST');
+                            if (img3) doc.addImage(img3, 'PNG', 10, 105, 92, 60, undefined, 'FAST');
+                            if (img4) doc.addImage(img4, 'PNG', 108, 105, 92, 60, undefined, 'FAST');
+                        } catch (e) {
+                            console.log("No se pudieron capturar canvas para el PDF", e);
                         }
 
-                        // Restituir pestaña de origen de forma imperceptible
-                        if (originalTab !== 'dashboard') {
-                            activeTab.value = originalTab;
-                            await nextTick();
-                        }
-
+                        // Agregar salto a las tablas de nómina
                         doc.addPage();
                     }
 
-                    // Generación de las tablas de alumnos (se mantiene tu código de autoTable original)...
+                    // --- TABLAS POR CURSO ---
                     const coursesMap = {};
                     targetSummaries.forEach(st => {
                         const c = st.course || 'Sin Curso';
@@ -2801,6 +2826,7 @@
                     });
 
                     const courseKeys = Object.keys(coursesMap).sort();
+
                     const coursePalette = [
                         { base: [239, 246, 255], step: [22, 28, 30] },
                         { base: [245, 243, 255], step: [20, 20, 30] },
@@ -2811,7 +2837,9 @@
                     ];
 
                     courseKeys.forEach((cKey, cIndex) => {
-                        if (cIndex > 0) doc.addPage();
+                        if (cIndex > 0) {
+                            doc.addPage();
+                        }
 
                         const courseStudents = coursesMap[cKey];
                         const reportTitle = `Reporte de Calificaciones - Curso: ${cKey}`;
@@ -2869,6 +2897,7 @@
                             head: [['Estudiante', 'Curso', 'Grupo', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación', 'Cierre']],
                             body: tableBody,
                             theme: 'grid',
+                            
                             rowPageBreak: 'auto',
                             headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
                             styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
