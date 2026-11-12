@@ -2975,13 +2975,7 @@
                         return;
                     }
 
-                    // --- HOJA 1: PORTADA EJECUTIVA VECTORIAL (100% VECTOR SVG/PDF) ---
-                    if (includeCharts) {
-                        drawVectorDashboardPage(doc, title, subtitle, courseFilter, targetSummaries, tpStatistics.value);
-                        doc.addPage();
-                    }
-
-                    // --- TABLAS POR CURSO ---
+                    // Organizar alumnos por curso
                     const coursesMap = {};
                     targetSummaries.forEach(st => {
                         const c = st.course || 'Sin Curso';
@@ -3000,12 +2994,32 @@
                         { base: [248, 250, 252], step: [15, 18, 20] }
                     ];
 
+                    let pageAdded = false;
+
+                    // 1. Portada General (solo si es PDF de Todos los Cursos e incluye gráficos)
+                    if (!courseFilter && includeCharts) {
+                        drawVectorDashboardPage(doc, title, subtitle, null, targetSummaries, tpStatistics.value);
+                        pageAdded = true;
+                    }
+
+                    // 2. Recorrer curso por curso
                     courseKeys.forEach((cKey, cIndex) => {
-                        if (cIndex > 0) {
+                        const courseStudents = coursesMap[cKey];
+
+                        // A. Gráfico individual del curso
+                        if (includeCharts) {
+                            if (pageAdded) {
+                                doc.addPage();
+                            }
+                            drawVectorDashboardPage(doc, title, subtitle, cKey, courseStudents, tpStatistics.value);
+                            pageAdded = true;
+                        }
+
+                        // B. Tabla del curso
+                        if (pageAdded) {
                             doc.addPage();
                         }
 
-                        const courseStudents = coursesMap[cKey];
                         const reportTitle = `Reporte de Calificaciones - Curso: ${cKey}`;
 
                         doc.setFontSize(16);
@@ -3114,6 +3128,8 @@
                                 }
                             }
                         });
+
+                        pageAdded = true;
                     });
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
