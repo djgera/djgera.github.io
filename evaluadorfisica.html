@@ -2229,6 +2229,13 @@
                         list = list.filter(st => st.course === dashboardCourse.value);
                     }
 
+                    // Configuración compartida con animación desactivada
+                    const baseOptions = {
+                        animation: false,
+                        responsive: true,
+                        maintainAspectRatio: false
+                    };
+
                     // --- 1. Calificaciones Conceptuales ---
                     let califCounts = { 'Avanzado (8-10)': 0, 'Suficiente (6-7)': 0, 'En Proceso (1-5)': 0, 'Sin Evaluar': 0 };
                     list.forEach(st => {
@@ -2255,11 +2262,7 @@
                                     borderColor: '#ffffff'
                                 }]
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
-                            }
+                            options: { ...baseOptions, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
                         });
                     }
 
@@ -2286,11 +2289,7 @@
                                     borderColor: '#ffffff'
                                 }]
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
-                            }
+                            options: { ...baseOptions, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
                         });
                     }
 
@@ -2317,12 +2316,7 @@
                                     borderRadius: 6
                                 }]
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                            }
+                            options: { ...baseOptions, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
                         });
                     }
 
@@ -2358,21 +2352,13 @@
                                     borderRadius: 6
                                 }]
                             },
-                            options: {
-                                indexAxis: 'y',
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { min: 0, max: 100 } }
-                            }
+                            options: { ...baseOptions, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100 } } }
                         });
                     }
 
-                    // --- 5. Desglose de Respuestas (Bien / Regular / Mal) por Curso o Grupo ---
+                    // --- 5. Desglose de Respuestas por Curso o Grupo ---
                     const subCategories = dashboardCourse.value ? groups.value : courses.value;
-                    const bienCounts = [];
-                    const regCounts = [];
-                    const malCounts = [];
+                    const bienCounts = [], regCounts = [], malCounts = [];
 
                     subCategories.forEach(cat => {
                         let b = 0, r = 0, m = 0;
@@ -2410,12 +2396,7 @@
                                     { label: 'Mal (1pt)', data: malCounts, backgroundColor: '#f43f5e', borderRadius: 4 }
                                 ]
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { position: 'top' } },
-                                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-                            }
+                            options: { ...baseOptions, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
                         });
                     }
                 }
@@ -2746,7 +2727,6 @@
 
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
-
                     const title = appTitle.value || 'Evaluador';
                     const subtitle = appSubtitle.value || 'Laboratorio de Física';
 
@@ -2760,11 +2740,17 @@
                         return;
                     }
 
-                    // --- HOJA 1: PORTADA EJECUTIVA CON GRÁFICOS (SI CORRESPONDE) ---
+                    // Si se incluye portada con gráficos y estamos en otra pestaña, conmutamos un instante al Dashboard
+                    const originalTab = activeTab.value;
                     if (includeCharts) {
-                        // Forzar renderizado previo por si no estaba en la pestaña Dashboard
+                        if (activeTab.value !== 'dashboard') {
+                            activeTab.value = 'dashboard';
+                            await nextTick();
+                            await new Promise(res => setTimeout(res, 100));
+                        }
+
                         dashboardCourse.value = courseFilter || '';
-                        renderDashboardCharts();
+                        renderDashboardCharts(true);
 
                         doc.setFontSize(18);
                         doc.setTextColor(2, 132, 199);
@@ -2781,7 +2767,6 @@
                             doc.text(`Filtro Aplicado: Curso ${courseFilter}`, 10, 33);
                         }
 
-                        // Capturar imágenes canvas en 2x2
                         const c1 = document.getElementById('chartCalifCanvas');
                         const c2 = document.getElementById('chartCierreCanvas');
                         const c3 = document.getElementById('chartNotasCanvas');
@@ -2798,11 +2783,16 @@
                             }
                         }
 
-                        // Agregar salto a las tablas de nómina
+                        // Restituir pestaña de origen de forma imperceptible
+                        if (originalTab !== 'dashboard') {
+                            activeTab.value = originalTab;
+                            await nextTick();
+                        }
+
                         doc.addPage();
                     }
 
-                    // --- TABLAS POR CURSO ---
+                    // Generación de las tablas de alumnos (se mantiene tu código de autoTable original)...
                     const coursesMap = {};
                     targetSummaries.forEach(st => {
                         const c = st.course || 'Sin Curso';
@@ -2811,7 +2801,6 @@
                     });
 
                     const courseKeys = Object.keys(coursesMap).sort();
-
                     const coursePalette = [
                         { base: [239, 246, 255], step: [22, 28, 30] },
                         { base: [245, 243, 255], step: [20, 20, 30] },
@@ -2822,9 +2811,7 @@
                     ];
 
                     courseKeys.forEach((cKey, cIndex) => {
-                        if (cIndex > 0) {
-                            doc.addPage();
-                        }
+                        if (cIndex > 0) doc.addPage();
 
                         const courseStudents = coursesMap[cKey];
                         const reportTitle = `Reporte de Calificaciones - Curso: ${cKey}`;
@@ -2882,7 +2869,6 @@
                             head: [['Estudiante', 'Curso', 'Grupo', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación', 'Cierre']],
                             body: tableBody,
                             theme: 'grid',
-                            
                             rowPageBreak: 'auto',
                             headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
                             styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
