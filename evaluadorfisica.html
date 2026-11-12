@@ -1840,7 +1840,7 @@
                 }
             });
 
-            // 3. Distribución
+            // 3. Distribución de Notas (1 a 10) - Ancho completo (186mm)
             const fullBoxW = 186;
             drawCardBox(col1X, boxY2, fullBoxW, boxH, "3. Distribución de Notas (1 a 10)");
             const notasDist = Array(10).fill(0);
@@ -1880,37 +1880,6 @@
                 doc.setFontSize(8);
                 doc.setTextColor(100, 116, 139);
                 doc.text(`${idx + 1}`, barX + barW/2, chartBaseY + 4.5, { align: 'center' });
-            });
-
-            const maxNotaCount = Math.max(...notasDist, 1);
-            const chartBaseY = boxY2 + 50;
-            const maxBarH = 34;
-
-            doc.setDrawColor(203, 213, 225);
-            doc.line(col1X + 8, chartBaseY, col1X + boxW - 5, chartBaseY);
-
-            notasDist.forEach((cnt, idx) => {
-                const barX = col1X + 10 + idx * 7.6;
-                const barW = 5.2;
-                const barH = (cnt / maxNotaCount) * maxBarH;
-
-                let color = [244, 63, 94];
-                if (idx >= 5 && idx <= 6) color = [245, 158, 11];
-                else if (idx >= 7) color = [16, 185, 129];
-
-                if (cnt > 0) {
-                    doc.setFillColor(...color);
-                    doc.roundedRect(barX, chartBaseY - barH, barW, barH, 1, 1, 'F');
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(6.5);
-                    doc.setTextColor(30, 41, 59);
-                    doc.text(`${cnt}`, barX + barW/2, chartBaseY - barH - 1.5, { align: 'center' });
-                }
-
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(7);
-                doc.setTextColor(100, 116, 139);
-                doc.text(`${idx + 1}`, barX + barW/2, chartBaseY + 4, { align: 'center' });
             });
 
             const footY = boxY2 + 66;
