@@ -1566,7 +1566,20 @@
 
     <!-- VUE 3 APPLICATION SCRIPT -->
     <script>
-        const { createApp, ref, computed, watch, onUnmounted, nextTick } = Vue;
+        const { createApp, ref, computed, watch, onUnmounted, onMounted, nextTick } = Vue;
+        // PLUGIN REGISTRATION FOR CHART.JS (SOLID WHITE BACKGROUND)
+        const whiteCanvasBg = {
+            id: 'whiteCanvasBg',
+            beforeDraw: (chart) => {
+                const { ctx, width, height } = chart;
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.restore();
+            }
+        };
+        Chart.register(whiteCanvasBg);
+
 
         // HELPER CONFORME A RFC-4180 PARA PARSEAR CSV
         function parseCustomCSV(text) {
@@ -1781,6 +1794,13 @@
                     if (rem < 0) return 'text-rose-500 animate-pulse';
                     if (rem <= 60) return 'text-amber-400';
                     return 'text-emerald-400';
+                });
+
+                
+                onMounted(() => {
+                    if (activeTab.value === 'dashboard') {
+                        nextTick(() => renderDashboardCharts(true));
+                    }
                 });
 
                 onUnmounted(() => {
@@ -2201,8 +2221,8 @@
                 });
 
                 // LÓGICA DE RENDERIZADO CHART.JS
-                function renderDashboardCharts() {
-                    if (activeTab.value !== 'dashboard') return;
+                function renderDashboardCharts(force = false) {
+                    if (!force && activeTab.value !== 'dashboard') return;
 
                     let list = groupedEvaluations.value;
                     if (dashboardCourse.value) {
@@ -2718,7 +2738,7 @@
                 }
 
                 // EXPORTAR PDF ALUMNOS (CON PORTADA GRÁFICA OPCIONAL)
-                function exportStudentsPDF(courseFilter = null, includeCharts = false) {
+                async function exportStudentsPDF(courseFilter = null, includeCharts = false) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
                         return;
@@ -2862,8 +2882,8 @@
                             head: [['Estudiante', 'Curso', 'Grupo', 'Duración', 'Eval.', 'Bien', 'Reg', 'Mal', 'Promedio', 'Calificación', 'Cierre']],
                             body: tableBody,
                             theme: 'grid',
-                            pageBreak: 'avoid',
-                            rowPageBreak: 'avoid',
+                            
+                            rowPageBreak: 'auto',
                             headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
                             styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
                             didParseCell: function(data) {
