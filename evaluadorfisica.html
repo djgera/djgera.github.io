@@ -1597,7 +1597,6 @@
         };
         Chart.register(whiteCanvasBg);
 
-
         // HELPER CONFORME A RFC-4180 PARA PARSEAR CSV
         function parseCustomCSV(text) {
             if (!text) return [];
@@ -1685,6 +1684,257 @@
             return totalSec < 0 ? `-${str}` : str;
         }
 
+        // --- HELPER DIBUJO VECTORIAL PURO EN jsPDF ---
+        function drawVectorDashboardPage(doc, title, subtitle, courseFilter, targetSummaries, tpStatsList) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.setTextColor(2, 132, 199);
+            doc.text(title, 12, 15);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`${subtitle} - Reporte Ejecutivo Vectorial`, 12, 21);
+            doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`, 12, 26);
+
+            if (courseFilter) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.setTextColor(30, 41, 59);
+                doc.text(`Filtro Aplicado: Curso ${courseFilter}`, 12, 32);
+            }
+
+            const totalSt = targetSummaries.length;
+            const evalSt = targetSummaries.filter(s => s.evalCount > 0).length;
+            const sumAvg = targetSummaries.reduce((acc, s) => acc + (s.evalCount > 0 ? s.avgGrade : 0), 0);
+            const globalAvg = evalSt > 0 ? (sumAvg / evalSt).toFixed(1) : '-';
+            let totalQuestions = 0;
+            targetSummaries.forEach(s => totalQuestions += s.evalCount);
+
+            const kpiY = courseFilter ? 36 : 32;
+            const kpiW = 44, kpiH = 14;
+            const kpis = [
+                { label: 'TOTAL ALUMNOS', val: `${totalSt}`, color: [2, 132, 199], bg: [239, 246, 255] },
+                { label: 'EVALUADOS', val: `${evalSt} (${totalSt > 0 ? Math.round(evalSt*100/totalSt) : 0}%)`, color: [16, 185, 129], bg: [236, 253, 245] },
+                { label: 'PROMEDIO GRAL', val: `${globalAvg} / 10`, color: [217, 119, 6], bg: [254, 243, 199] },
+                { label: 'PREGUNTAS EVAL', val: `${totalQuestions}`, color: [147, 51, 234], bg: [250, 245, 255] }
+            ];
+
+            kpis.forEach((kpi, idx) => {
+                const kx = 12 + idx * 46;
+                doc.setFillColor(...kpi.bg);
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(kx, kpiY, kpiW, kpiH, 2, 2, 'FD');
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(kpi.label, kx + 3, kpiY + 4.5);
+
+                doc.setFontSize(11);
+                doc.setTextColor(...kpi.color);
+                doc.text(kpi.val, kx + 3, kpiY + 11);
+            });
+
+            const boxY1 = kpiY + 18;
+            const boxY2 = boxY1 + 64;
+            const boxW = 91, boxH = 60;
+            const col1X = 12, col2X = 107;
+
+            function drawCardBox(x, y, w, h, cardTitle) {
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(x, y, w, h, 3, 3, 'FD');
+
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(x, y, w, 8, 3, 3, 'F');
+                doc.rect(x, y + 5, w, 3, 'F');
+                doc.setDrawColor(241, 245, 249);
+                doc.line(x, y + 8, x + w, y + 8);
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(30, 41, 59);
+                doc.text(cardTitle, x + 4, y + 5.5);
+            }
+
+            // 1. Calificaciones
+            drawCardBox(col1X, boxY1, boxW, boxH, "1. Nivel de Logro (Calificaciones)");
+            let cCalif = { 'Avanzado (8-10)': 0, 'Suficiente (6-7)': 0, 'En Proceso (1-5)': 0, 'Sin Evaluar': 0 };
+            targetSummaries.forEach(st => {
+                if (st.evalCount === 0) cCalif['Sin Evaluar']++;
+                else {
+                    const r = st.roundedGrade;
+                    if (r >= 8) cCalif['Avanzado (8-10)']++;
+                    else if (r >= 6) cCalif['Suficiente (6-7)']++;
+                    else cCalif['En Proceso (1-5)']++;
+                }
+            });
+
+            const califItems = [
+                { label: 'Avanzado (8-10)', count: cCalif['Avanzado (8-10)'], color: [16, 185, 129] },
+                { label: 'Suficiente (6-7)', count: cCalif['Suficiente (6-7)'], color: [245, 158, 11] },
+                { label: 'En Proceso (1-5)', count: cCalif['En Proceso (1-5)'], color: [244, 63, 94] },
+                { label: 'Sin Evaluar', count: cCalif['Sin Evaluar'], color: [203, 213, 225] }
+            ];
+
+            const maxCalif = Math.max(...califItems.map(i => i.count), 1);
+            califItems.forEach((item, idx) => {
+                const ry = boxY1 + 13 + idx * 11;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(51, 65, 85);
+                doc.text(item.label, col1X + 4, ry + 4);
+
+                doc.setFont("helvetica", "bold");
+                doc.text(`${item.count}`, col1X + 44, ry + 4);
+
+                const barX = col1X + 49;
+                const barW = 36;
+                doc.setFillColor(241, 245, 249);
+                doc.roundedRect(barX, ry, barW, 5, 1.5, 1.5, 'F');
+
+                const fillW = Math.max((item.count / maxCalif) * barW, item.count > 0 ? 2 : 0);
+                if (fillW > 0) {
+                    doc.setFillColor(...item.color);
+                    doc.roundedRect(barX, ry, fillW, 5, 1.5, 1.5, 'F');
+                }
+            });
+
+            // 2. Cierre
+            drawCardBox(col2X, boxY1, boxW, boxH, "2. Estado Cierre de Etapa");
+            let cCierre = { 'En Curso / Abierto': 0, 'Cierre Parcial': 0, 'Cierre Final': 0 };
+            targetSummaries.forEach(st => {
+                const state = st.closureState || 'Abierto';
+                if (state === 'Final') cCierre['Cierre Final']++;
+                else if (state === 'Parcial') cCierre['Cierre Parcial']++;
+                else cCierre['En Curso / Abierto']++;
+            });
+
+            const cierreItems = [
+                { label: 'En Curso / Abierto', count: cCierre['En Curso / Abierto'], color: [2, 132, 199] },
+                { label: 'Cierre Parcial', count: cCierre['Cierre Parcial'], color: [217, 119, 6] },
+                { label: 'Cierre Final', count: cCierre['Cierre Final'], color: [5, 150, 105] }
+            ];
+
+            const maxCierre = Math.max(...cierreItems.map(i => i.count), 1);
+            cierreItems.forEach((item, idx) => {
+                const ry = boxY1 + 16 + idx * 13;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7.5);
+                doc.setTextColor(51, 65, 85);
+                doc.text(item.label, col2X + 4, ry + 4);
+
+                doc.setFont("helvetica", "bold");
+                doc.text(`${item.count}`, col2X + 44, ry + 4);
+
+                const barX = col2X + 49;
+                const barW = 36;
+                doc.setFillColor(241, 245, 249);
+                doc.roundedRect(barX, ry, barW, 5.5, 1.5, 1.5, 'F');
+
+                const fillW = Math.max((item.count / maxCierre) * barW, item.count > 0 ? 2 : 0);
+                if (fillW > 0) {
+                    doc.setFillColor(...item.color);
+                    doc.roundedRect(barX, ry, fillW, 5.5, 1.5, 1.5, 'F');
+                }
+            });
+
+            // 3. Distribución
+            drawCardBox(col1X, boxY2, boxW, boxH, "3. Distribución de Notas (1 a 10)");
+            const notasDist = Array(10).fill(0);
+            targetSummaries.forEach(st => {
+                if (st.evalCount > 0) {
+                    const score = Math.min(10, Math.max(1, Math.round(st.avgGrade)));
+                    notasDist[score - 1]++;
+                }
+            });
+
+            const maxNotaCount = Math.max(...notasDist, 1);
+            const chartBaseY = boxY2 + 50;
+            const maxBarH = 34;
+
+            doc.setDrawColor(203, 213, 225);
+            doc.line(col1X + 8, chartBaseY, col1X + boxW - 5, chartBaseY);
+
+            notasDist.forEach((cnt, idx) => {
+                const barX = col1X + 10 + idx * 7.6;
+                const barW = 5.2;
+                const barH = (cnt / maxNotaCount) * maxBarH;
+
+                let color = [244, 63, 94];
+                if (idx >= 5 && idx <= 6) color = [245, 158, 11];
+                else if (idx >= 7) color = [16, 185, 129];
+
+                if (cnt > 0) {
+                    doc.setFillColor(...color);
+                    doc.roundedRect(barX, chartBaseY - barH, barW, barH, 1, 1, 'F');
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(30, 41, 59);
+                    doc.text(`${cnt}`, barX + barW/2, chartBaseY - barH - 1.5, { align: 'center' });
+                }
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`${idx + 1}`, barX + barW/2, chartBaseY + 4, { align: 'center' });
+            });
+
+            // 4. % TPs
+            drawCardBox(col2X, boxY2, boxW, boxH, "4. % Acierto por TP Habilitado");
+            const tpsList = (tpStatsList || []).slice(0, 4);
+            if (tpsList.length === 0) {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184);
+                doc.text("Sin datos de TPs habilitados", col2X + 20, boxY2 + 30);
+            } else {
+                tpsList.forEach((tp, idx) => {
+                    const ry = boxY2 + 13 + idx * 11;
+                    const rate = parseInt(tp.tpAvgGrade10 ? Math.round(parseFloat(tp.tpAvgGrade10)*10) : 0) || 0;
+                    
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(51, 65, 85);
+                    const labelStr = `TP ${tp.id}: ${tp.name.length > 18 ? tp.name.substring(0, 17) + '...' : tp.name}`;
+                    doc.text(labelStr, col2X + 4, ry + 4);
+
+                    const barX = col2X + 46;
+                    const barW = 32;
+                    doc.setFillColor(241, 245, 249);
+                    doc.roundedRect(barX, ry, barW, 5, 1.5, 1.5, 'F');
+
+                    const fillW = (rate / 100) * barW;
+                    if (fillW > 0) {
+                        doc.setFillColor(2, 132, 199);
+                        doc.roundedRect(barX, ry, fillW, 5, 1.5, 1.5, 'F');
+                    }
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(7);
+                    doc.setTextColor(30, 41, 59);
+                    doc.text(`${rate}%`, col2X + 80, ry + 4);
+                });
+            }
+
+            const footY = boxY2 + 66;
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(12, footY, 186, 16, 3, 3, 'FD');
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            doc.setTextColor(2, 132, 199);
+            doc.text("Nota de Evaluación y Criterio Institucional:", 16, footY + 5.5);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.setTextColor(71, 85, 105);
+            doc.text("• Calificaciones Conceptuales: Avanzado (8-10 pts), Suficiente (6-7 pts), En Proceso (1-5 pts).", 16, footY + 10.5);
+            doc.text("• Las notas promedio corresponden a las respuestas ponderadas acumuladas de los exámenes orales de laboratorio.", 16, footY + 14.5);
+        }
+
         createApp({
             setup() {
                 const activeTab = ref('dashboard');
@@ -1705,7 +1955,6 @@
                 watch(questionBank, val => safeSetStorage('eval_questionBank', val), { deep: true });
                 watch(evaluations, val => safeSetStorage('eval_evaluations', val), { deep: true });
 
-                // ESTADO DASHBOARD & GRÁFICOS
                 const dashboardCourse = ref('');
                 const includeChartsInPDF = ref(false);
 
@@ -1715,7 +1964,6 @@
                 let chartTpsInstance = null;
                 let chartRespuestasInstance = null;
 
-                // ⏱️ ESTADO DEL TEMPORIZADOR GENERAL DE LA JORNADA
                 const generalTimerSetMinutes = ref(safeGetStorage('eval_genTimerMinutes', 60));
                 const generalTimerSeconds = ref(generalTimerSetMinutes.value * 60);
                 const generalTimerRunning = ref(false);
@@ -1757,7 +2005,6 @@
                     return 'text-emerald-400';
                 });
 
-                // ⏳ ESTADO DEL TEMPORIZADOR INDIVIDUAL POR SESIÓN DE ALUMNO
                 const evalTimerSetMinutes = ref(safeGetStorage('eval_evalTimerMinutes', 10));
                 const evalTimerElapsed = ref(0);
                 const evalTimerLimit = ref(evalTimerSetMinutes.value * 60);
@@ -1813,7 +2060,6 @@
                     return 'text-emerald-400';
                 });
 
-                
                 onMounted(() => {
                     if (activeTab.value === 'dashboard') {
                         nextTick(() => renderDashboardCharts(true));
@@ -1884,7 +2130,6 @@
                 const newTp = ref({ id: 1, name: '', enabled: true });
                 const editingTp = ref(1);
 
-                // FILTRO POR CURSO EN PESTAÑA ALUMNOS
                 const studentTabCourseFilter = ref('');
                 const studentTabFilteredList = computed(() => {
                     if (!studentTabCourseFilter.value) return students.value;
@@ -1923,7 +2168,6 @@
                 const selectedTpItem = computed(() => tps.value.find(t => t.id === selectedTp.value) || null);
                 const editingTpKey = computed(() => `tp${editingTp.value}`);
 
-                // LISTA DE PREGUNTAS DEL TP ACTIVO PARA SELECTOR MANUAL
                 const tpQuestionsList = computed(() => {
                     const tpKey = `tp${selectedTp.value}`;
                     return questionBank.value[tpKey] || [];
@@ -1986,7 +2230,6 @@
                     };
                 });
 
-                // PLANILLA CONSOLIDADA DE TODOS LOS ALUMNOS
                 const groupedEvaluations = computed(() => {
                     const studentMap = {};
 
@@ -2101,7 +2344,6 @@
                         return matchesSearch && matchesCourse && matchesGroup && matchesStatus;
                     });
 
-                    // ORDEN POR DEFECTO: CURSO Y LUEGO NOMBRE/APELLIDO (IGNORAR GRUPO)
                     filtered.sort((a, b) => {
                         if (sortColumn.value === 'default') {
                             if (!historyFilterCourse.value) {
@@ -2138,7 +2380,6 @@
                     return filtered;
                 });
 
-                // MÉTRICAS Y DATOS DASHBOARD
                 const dashboardMetrics = computed(() => {
                     let list = groupedEvaluations.value;
                     if (dashboardCourse.value) {
@@ -2237,7 +2478,6 @@
                     });
                 });
 
-                // LÓGICA DE RENDERIZADO CHART.JS
                 function renderDashboardCharts(force = false) {
                     if (!force && activeTab.value !== 'dashboard') return;
 
@@ -2246,7 +2486,6 @@
                         list = list.filter(st => st.course === dashboardCourse.value);
                     }
 
-                    // --- 1. Calificaciones Conceptuales ---
                     let califCounts = { 'Avanzado (8-10)': 0, 'Suficiente (6-7)': 0, 'En Proceso (1-5)': 0, 'Sin Evaluar': 0 };
                     list.forEach(st => {
                         if (st.evalCount === 0) califCounts['Sin Evaluar']++;
@@ -2280,7 +2519,6 @@
                         });
                     }
 
-                    // --- 2. Cierre de Etapa ---
                     let cierreCounts = { '🔓 En Curso / Abierto': 0, '📋 Cierre Parcial': 0, '🎓 Cierre Final': 0 };
                     list.forEach(st => {
                         const state = st.closureState || 'Abierto';
@@ -2311,7 +2549,6 @@
                         });
                     }
 
-                    // --- 3. Distribución Notas (1 a 10) ---
                     const notasDist = Array(10).fill(0);
                     list.forEach(st => {
                         if (st.evalCount > 0) {
@@ -2343,7 +2580,6 @@
                         });
                     }
 
-                    // --- 4. % Acierto por TP Habilitado ---
                     const tpLabels = tpStatistics.value.map(t => `TP ${t.id}`);
                     const tpRates = tpStatistics.value.map(t => {
                         let sumPts = 0, count = 0;
@@ -2385,7 +2621,6 @@
                         });
                     }
 
-                    // --- 5. Desglose de Respuestas (Bien / Regular / Mal) por Curso o Grupo ---
                     const subCategories = dashboardCourse.value ? groups.value : courses.value;
                     const bienCounts = [];
                     const regCounts = [];
@@ -2718,7 +2953,6 @@
                     return 'bg-emerald-100 text-emerald-800 border-emerald-300';
                 }
 
-                // EXPORT PLANILLA CSV (INCLUYE DURACIÓN)
                 function exportToCSV() {
                     if (groupedEvaluations.value.length === 0) {
                         showToast("No hay registros en la planilla.", "warning");
@@ -2754,8 +2988,8 @@
                     showToast("Planilla consolidada exportada a CSV", "success");
                 }
 
-                // EXPORTAR PDF ALUMNOS (CON PORTADA GRÁFICA OPCIONAL)
-                async function exportStudentsPDF(courseFilter = null, includeCharts = false) {
+                // EXPORTAR PDF ALUMNOS CON MOTOR VECTORIAL PURO
+                function exportStudentsPDF(courseFilter = null, includeCharts = false) {
                     if (students.value.length === 0) {
                         showToast("No hay alumnos registrados para exportar.", "warning");
                         return;
@@ -2777,43 +3011,9 @@
                         return;
                     }
 
-                    // --- HOJA 1: PORTADA EJECUTIVA CON GRÁFICOS (SI CORRESPONDE) ---
+                    // --- HOJA 1: PORTADA EJECUTIVA VECTORIAL (100% VECTOR SVG/PDF) ---
                     if (includeCharts) {
-                        // Forzar renderizado previo por si no estaba en la pestaña Dashboard
-                        dashboardCourse.value = courseFilter || '';
-                        renderDashboardCharts();
-
-                        doc.setFontSize(18);
-                        doc.setTextColor(2, 132, 199);
-                        doc.text(title, 10, 15);
-                        
-                        doc.setFontSize(10);
-                        doc.setTextColor(100);
-                        doc.text(`${subtitle} - Reporte Ejecutivo Visual`, 10, 22);
-                        doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`, 10, 27);
-
-                        if (courseFilter) {
-                            doc.setFontSize(11);
-                            doc.setTextColor(30);
-                            doc.text(`Filtro Aplicado: Curso ${courseFilter}`, 10, 33);
-                        }
-
-                        // Capturar imágenes canvas en 2x2
-                        const img1 = getCrispChartDataURL(chartCalifInstance, 1840, 1200);
-                        const img2 = getCrispChartDataURL(chartCierreInstance, 1840, 1200);
-                        const img3 = getCrispChartDataURL(chartNotasInstance, 1840, 1200);
-                        const img4 = getCrispChartDataURL(chartTpsInstance, 1840, 1200);
-
-                        try {
-                            if (img1) doc.addImage(img1, 'PNG', 10, 38, 92, 60, undefined, 'FAST');
-                            if (img2) doc.addImage(img2, 'PNG', 108, 38, 92, 60, undefined, 'FAST');
-                            if (img3) doc.addImage(img3, 'PNG', 10, 105, 92, 60, undefined, 'FAST');
-                            if (img4) doc.addImage(img4, 'PNG', 108, 105, 92, 60, undefined, 'FAST');
-                        } catch (e) {
-                            console.log("No se pudieron capturar canvas para el PDF", e);
-                        }
-
-                        // Agregar salto a las tablas de nómina
+                        drawVectorDashboardPage(doc, title, subtitle, courseFilter, targetSummaries, tpStatistics.value);
                         doc.addPage();
                     }
 
@@ -2954,7 +3154,7 @@
 
                     const fileName = courseFilter ? `Reporte_Alumnos_${courseFilter}.pdf` : `Reporte_General_Alumnos.pdf`;
                     doc.save(fileName);
-                    showToast("PDF descargado correctamente", "success");
+                    showToast("PDF vectorial generado y descargado correctamente", "success");
                 }
 
                 function exportMatrixPDF() {
