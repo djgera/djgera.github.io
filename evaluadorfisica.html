@@ -278,15 +278,25 @@
                         </div>
 
                         <!-- Selector Cierre de Etapa Alumno -->
-                        <div class="flex items-center space-x-4">
+                        <div class="flex flex-wrap items-center gap-4">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Cierre de Etapa Alumno</label>
-                                <select :value="currentStudent.closureState || 'Abierto'" @change="updateStudentClosureState(currentStudent.id, $event.target.value)" 
-                                        class="bg-white border border-slate-300 text-slate-900 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:ring-2 focus:ring-brand-500">
-                                    <option value="Abierto">🔓 En Curso (Abierto)</option>
-                                    <option value="Parcial">📋 Cierre PARCIAL</option>
-                                    <option value="Final">🎓 Cierre FINAL</option>
-                                </select>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
+                                    Cierre de Etapa Alumno
+                                    <span v-if="currentStudent.isFixed" class="ml-1 text-slate-700">🔒 Fijado</span>
+                                </label>
+                                <div class="flex items-center space-x-1.5">
+                                    <select :value="currentStudent.closureState || 'Abierto'" @change="updateStudentClosureState(currentStudent.id, $event.target.value)" 
+                                            :disabled="currentStudent.isFixed"
+                                            class="bg-white border border-slate-300 text-slate-900 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:ring-2 focus:ring-brand-500 disabled:opacity-60">
+                                        <option value="Abierto">🔓 En Curso (Abierto)</option>
+                                        <option value="Parcial">📋 Cierre PARCIAL</option>
+                                        <option value="Final">🎓 Cierre FINAL</option>
+                                        <option value="Agotado">⛔ Cierre FINAL (Agotado)</option>
+                                    </select>
+                                    <button v-if="currentStudent.isFixed" @click="unlockStudentClosure(currentStudent.id)" title="Destrabar alumno para permitir nueva instancia" class="px-2 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition">
+                                        <i class="fa-solid fa-lock-open"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="h-8 w-px bg-slate-300 hidden sm:block"></div>
@@ -294,12 +304,12 @@
                             <div class="flex items-center space-x-6 text-xs text-slate-600">
                                 <div class="text-center">
                                     <span class="block font-bold text-lg text-slate-900">{{ currentStudentStats.count }}</span>
-                                    <span>Preguntas Respondidas</span>
+                                    <span>Preguntas (Inst. #{{ currentStudentStats.instanceNumber }})</span>
                                 </div>
                                 <div class="h-8 w-px bg-slate-300"></div>
                                 <div class="text-center">
                                     <span class="block font-bold text-lg text-brand-600">{{ currentStudentStats.avgGrade }}</span>
-                                    <span>Nota Promedio</span>
+                                    <span>{{ currentStudentStats.isProvisional ? 'Nota Provisoria' : 'Nota Promedio' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -600,6 +610,16 @@
                                 <i class="fa-solid fa-file-pdf"></i>
                                 <span>PDF General (Todos los Cursos)</span>
                             </button>
+
+                            <button @click="confirmFixClosure('course')" :disabled="!historyFilterCourse" :class="historyFilterCourse ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-300 opacity-60 cursor-not-allowed'" class="px-3.5 py-2 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow" title="Cerrar sesiones abiertas/parciales y fijar notas del curso seleccionado">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Fijar Curso</span>
+                            </button>
+
+                            <button @click="confirmFixClosure('all')" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center space-x-2 shadow" title="Cerrar sesiones abiertas/parciales y fijar notas de toda la nómina">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Fijar Todos</span>
+                            </button>
                         </div>
                     </div>
 
@@ -743,6 +763,7 @@
                                                 <span class="text-emerald-700 font-bold">{{ st.bienCount }}B</span>
                                                 <span class="text-amber-700 font-bold">{{ st.regularCount }}R</span>
                                                 <span class="text-rose-700 font-bold">{{ st.malCount }}M</span>
+                                                <span v-if="st.instances.length > 1" class="text-brand-700 font-bold ml-1">(Inst. #{{ st.activeInstanceNumber }})</span>
                                             </div>
                                         </td>
 
@@ -751,6 +772,9 @@
                                                 {{ st.avgGrade }} / 10
                                             </span>
                                             <span v-else class="text-slate-400 italic">Sin evaluar</span>
+                                            <div v-if="st.evalCount > 0 && st.isProvisional" class="text-[10px] font-bold text-amber-700 mt-0.5">
+                                                Provisorio
+                                            </div>
                                         </td>
 
                                         <td class="p-3 text-center whitespace-nowrap">
@@ -761,12 +785,22 @@
                                         </td>
 
                                         <td class="p-3 text-center whitespace-nowrap" @click.stop>
-                                            <select :value="st.closureState || 'Abierto'" @change="updateStudentClosureState(st.studentId, $event.target.value)" 
-                                                    class="bg-slate-100 border border-slate-300 text-[11px] font-bold rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500">
-                                                <option value="Abierto">🔓 En Curso</option>
-                                                <option value="Parcial">📋 PARCIAL</option>
-                                                <option value="Final">🎓 FINAL</option>
-                                            </select>
+                                            <div class="inline-flex items-center space-x-1">
+                                                <select :value="st.closureState || 'Abierto'" @change="updateStudentClosureState(st.studentId, $event.target.value)" 
+                                                        :disabled="st.isFixed"
+                                                        class="bg-slate-100 border border-slate-300 text-[11px] font-bold rounded-lg px-2 py-1 focus:ring-2 focus:ring-brand-500 disabled:opacity-60">
+                                                    <option value="Abierto">🔓 En Curso</option>
+                                                    <option value="Parcial">📋 PARCIAL</option>
+                                                    <option value="Final">🎓 FINAL</option>
+                                                    <option value="Agotado">⛔ AGOTADO</option>
+                                                </select>
+                                                <button v-if="!st.isFixed" @click="confirmFixClosure('student', st.studentId)" title="Fijar estado actual de este alumno" class="px-2 py-1 bg-slate-200 hover:bg-amber-600 hover:text-white text-slate-700 rounded-lg text-[11px] font-bold transition">
+                                                    <i class="fa-solid fa-lock"></i>
+                                                </button>
+                                                <button v-else @click="unlockStudentClosure(st.studentId)" title="Estado fijado. Clic para destrabar alumno" class="px-2 py-1 bg-slate-800 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold transition">
+                                                    <i class="fa-solid fa-lock"></i>
+                                                </button>
+                                            </div>
                                         </td>
 
                                         <td class="p-3 text-center whitespace-nowrap space-x-2">
@@ -807,6 +841,25 @@
                                                     </div>
                                                 </div>
 
+                                                <!-- RESUMEN DE INSTANCIAS EVALUATIVAS -->
+                                                <div v-if="st.instances && st.instances.length > 0" class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                                                    <h5 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center space-x-1">
+                                                        <i class="fa-solid fa-code-branch text-brand-500"></i>
+                                                        <span>Instancias Evaluativas (La calificación vigente corresponde a la última instancia):</span>
+                                                    </h5>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <div v-for="inst in st.instances" :key="inst.number"
+                                                             :class="inst.isActive ? 'bg-brand-50 border-brand-300 text-brand-900' : 'bg-slate-100 border-slate-200 text-slate-500'"
+                                                             class="px-3 py-1.5 rounded-lg text-xs border flex items-center space-x-2">
+                                                            <span class="font-extrabold">Instancia #{{ inst.number }}</span>
+                                                            <span>({{ inst.state }})</span>
+                                                            <span class="font-black">Promedio: {{ inst.avgGrade }}</span>
+                                                            <span v-if="inst.isActive" class="px-1.5 py-0.5 bg-brand-600 text-white rounded text-[10px] font-bold">Vigente</span>
+                                                            <span v-else class="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-semibold">Ignorada</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 <!-- HISTORIAL DE PREGUNTAS INTENTADAS CON DURACIÓN -->
                                                 <div class="space-y-2">
                                                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -814,13 +867,14 @@
                                                             <i class="fa-solid fa-list-check text-brand-500"></i>
                                                             <span>Historial de Preguntas Evaluadas a {{ st.studentName }}</span>
                                                         </h4>
-                                                        <span class="text-[11px] text-slate-400">Total intentos: {{ st.attempts.length }}</span>
+                                                        <span class="text-[11px] text-slate-400">Total intentos históricos: {{ st.allAttempts.length }}</span>
                                                     </div>
 
                                                     <div class="overflow-x-auto">
                                                         <table class="w-full text-left text-xs border-collapse">
                                                             <thead>
                                                                 <tr class="bg-slate-100 text-slate-500 font-semibold border-b border-slate-200">
+                                                                    <th class="p-2 w-24 text-center">Instancia</th>
                                                                     <th class="p-2 w-36">Fecha/Hora</th>
                                                                     <th class="p-2 w-24 text-center">Duración</th>
                                                                     <th class="p-2 w-48">Trabajo Práctico</th>
@@ -830,12 +884,17 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody class="divide-y divide-slate-100">
-                                                                <tr v-if="st.attempts.length === 0">
-                                                                    <td colspan="6" class="p-4 text-center text-slate-400 italic">
+                                                                <tr v-if="st.allAttempts.length === 0">
+                                                                    <td colspan="7" class="p-4 text-center text-slate-400 italic">
                                                                         Este alumno aún no posee preguntas orales registradas.
                                                                     </td>
                                                                 </tr>
-                                                                <tr v-for="att in st.attempts" :key="att.id" class="hover:bg-slate-50">
+                                                                <tr v-for="att in st.allAttempts" :key="att.id" :class="att.isActiveInstance ? 'hover:bg-slate-50' : 'bg-slate-50/60 text-slate-400'">
+                                                                    <td class="p-2 text-center whitespace-nowrap">
+                                                                        <span :class="att.isActiveInstance ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-600'" class="px-2 py-0.5 rounded font-bold text-[10px]">
+                                                                            #{{ att.instanceNumber }}
+                                                                        </span>
+                                                                    </td>
                                                                     <td class="p-2 text-slate-500 whitespace-nowrap">{{ formatDate(att.date) }}</td>
                                                                     <td class="p-2 text-center font-mono text-[11px] text-slate-600 font-bold whitespace-nowrap">
                                                                         {{ att.duration ? att.duration + ' m' : '-' }}
@@ -1523,6 +1582,17 @@
                     </span>
                 </div>
 
+                <!-- Estado de Cierre de la Sesión / Instancia -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de la Sesión / Instancia Evaluativa</label>
+                    <select v-model="finishSessionState" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-brand-500">
+                        <option value="Final">🎓 Cierre FINAL (Sella esta instancia y define la nota)</option>
+                        <option value="Parcial">📋 Cierre PARCIAL (Queda incompleta, continúa en otra sesión)</option>
+                        <option value="Abierto">🔓 En Curso / Abierto (Acumula preguntas en esta instancia)</option>
+                        <option value="Agotado">⛔ Cierre FINAL - Chances Agotadas (Fija estado hasta el próximo año)</option>
+                    </select>
+                </div>
+
                 <!-- Comentario del Docente -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Observaciones / Comentario (Opcional)</label>
@@ -1542,21 +1612,21 @@
             </div>
         </div>
 
-        <!-- MODAL NATIVO VUE: CONFIRMACIÓN DE VACIADO / RESET -->
+        <!-- MODAL NATIVO VUE: CONFIRMACIÓN DE VACIADO / RESET / CIERRE -->
         <div v-if="confirmModal.show" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center transform transition-all border border-rose-100">
-                <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
+            <div :class="confirmModal.variant === 'brand' ? 'border-brand-100' : 'border-rose-100'" class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center transform transition-all border">
+                <div :class="confirmModal.variant === 'brand' ? 'bg-brand-100 text-brand-600' : 'bg-rose-100 text-rose-600'" class="w-16 h-16 rounded-full flex items-center justify-center text-2xl mx-auto">
+                    <i :class="confirmModal.variant === 'brand' ? 'fa-solid fa-lock' : 'fa-solid fa-triangle-exclamation'"></i>
                 </div>
                 <h3 class="text-lg font-bold text-slate-900">{{ confirmModal.title }}</h3>
-                <p class="text-xs text-slate-600 leading-relaxed">{{ confirmModal.message }}</p>
+                <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">{{ confirmModal.message }}</p>
                 
                 <div class="flex items-center space-x-3 pt-3">
                     <button @click="confirmModal.show = false" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
                         Cancelar
                     </button>
-                    <button @click="executeConfirmAction" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition">
-                        Sí, Eliminar Datos
+                    <button @click="executeConfirmAction" :class="confirmModal.variant === 'brand' ? 'bg-brand-600 hover:bg-brand-700' : 'bg-rose-600 hover:bg-rose-700'" class="flex-1 py-2.5 text-white text-xs font-bold rounded-xl shadow-md transition">
+                        {{ confirmModal.confirmText || 'Sí, Eliminar Datos' }}
                     </button>
                 </div>
             </div>
@@ -2077,6 +2147,7 @@
 
                 const showFinishModal = ref(false);
                 const finishNotes = ref('');
+                const finishSessionState = ref('Final');
 
                 const historyFilterSearch = ref('');
                 const historyFilterCourse = ref('');
@@ -2158,10 +2229,18 @@
                 }
 
                 const currentStudentStats = computed(() => {
-                    if (!currentStudent.value) return { count: 0, avgGrade: '-' };
+                    if (!currentStudent.value) return { count: 0, avgGrade: '-', instanceNumber: 1, isProvisional: false };
                     const stSummary = groupedEvaluations.value.find(st => st.studentId === currentStudent.value.id);
-                    if (!stSummary || stSummary.evalCount === 0) return { count: 0, avgGrade: '-' };
-                    return { count: stSummary.evalCount, avgGrade: stSummary.avgGrade.toFixed(1) };
+                    if (!stSummary || stSummary.evalCount === 0) {
+                        const nextInst = stSummary ? stSummary.activeInstanceNumber : 1;
+                        return { count: 0, avgGrade: '-', instanceNumber: nextInst, isProvisional: false };
+                    }
+                    return {
+                        count: stSummary.evalCount,
+                        avgGrade: stSummary.avgGrade.toFixed(1),
+                        instanceNumber: stSummary.activeInstanceNumber,
+                        isProvisional: stSummary.isProvisional
+                    };
                 });
 
                 const activeRoundTotalPoints = computed(() => activeRound.value.questions.reduce((acc, q) => acc + q.points, 0));
@@ -2204,7 +2283,8 @@
                             course: st.course,
                             group: st.group,
                             closureState: st.closureState || 'Abierto',
-                            attempts: [],
+                            isFixed: !!st.isFixed,
+                            rawSessions: [],
                             latestDate: null,
                             latestDuration: null
                         };
@@ -2219,69 +2299,150 @@
                                 course: ev.course,
                                 group: ev.group,
                                 closureState: 'Abierto',
-                                attempts: [],
+                                isFixed: false,
+                                rawSessions: [],
                                 latestDate: ev.date || ev.timestamp,
                                 latestDuration: ev.duration || null
                             };
                         }
-
-                        const evDate = ev.date || ev.timestamp;
-                        if (!studentMap[stId].latestDate || new Date(evDate) > new Date(studentMap[stId].latestDate)) {
-                            studentMap[stId].latestDate = evDate;
-                            if (ev.duration) studentMap[stId].latestDuration = ev.duration;
-                        }
-
-                        if (Array.isArray(ev.details) && ev.details.length > 0) {
-                            ev.details.forEach((d, idx) => {
-                                const pts = getPointsFromGrade(d.label, d.score);
-                                const tpFound = tps.value.find(t => t.id === parseInt(d.tp));
-                                studentMap[stId].attempts.push({
-                                    id: `${ev.id}-d${idx}`,
-                                    parentEvId: ev.id,
-                                    detailIndex: idx,
-                                    date: evDate,
-                                    duration: ev.duration || null,
-                                    tp: d.tp,
-                                    tpName: tpFound ? `TP Nº ${d.tp}: ${tpFound.name}` : `TP Nº ${d.tp}`,
-                                    questionText: d.text,
-                                    grade: d.label || (d.score === 1.0 ? 'Bien' : d.score === 0.5 ? 'Regular' : 'Mal'),
-                                    points: pts
-                                });
-                            });
-                        } else if (ev.questionText) {
-                            const pts = getPointsFromGrade(ev.grade, ev.score);
-                            const tpFound = tps.value.find(t => t.id === parseInt(ev.tpNum));
-                            studentMap[stId].attempts.push({
-                                id: ev.id,
-                                parentEvId: ev.id,
-                                detailIndex: null,
-                                date: evDate,
-                                duration: ev.duration || null,
-                                tp: ev.tpNum || 1,
-                                tpName: tpFound ? `TP Nº ${ev.tpNum}: ${tpFound.name}` : `TP Nº ${ev.tpNum || 1}`,
-                                questionText: ev.questionText,
-                                grade: ev.grade || 'Bien',
-                                points: pts
-                            });
-                        }
+                        studentMap[stId].rawSessions.push(ev);
                     });
 
                     const result = Object.values(studentMap).map(st => {
+                        const sortedSessions = [...st.rawSessions].sort((a, b) => {
+                            const dA = new Date(a.date || a.timestamp || 0).getTime();
+                            const dB = new Date(b.date || b.timestamp || 0).getTime();
+                            return dA - dB;
+                        });
+
+                        const instances = [];
+                        let currentInst = {
+                            number: 1,
+                            sessions: [],
+                            attempts: [],
+                            state: 'Abierto',
+                            latestDate: null,
+                            latestDuration: null
+                        };
+
+                        const allAttempts = [];
+
+                        sortedSessions.forEach((ev, sIdx) => {
+                            const evDate = ev.date || ev.timestamp;
+                            let sState = ev.sessionState;
+                            if (!sState) {
+                                sState = (sIdx === sortedSessions.length - 1 && st.closureState)
+                                    ? st.closureState
+                                    : 'Abierto';
+                            }
+
+                            currentInst.sessions.push(ev);
+                            currentInst.state = sState;
+                            currentInst.latestDate = evDate;
+                            if (ev.duration) currentInst.latestDuration = ev.duration;
+
+                            const instNum = currentInst.number;
+
+                            if (Array.isArray(ev.details) && ev.details.length > 0) {
+                                ev.details.forEach((d, idx) => {
+                                    const pts = getPointsFromGrade(d.label, d.score);
+                                    const tpFound = tps.value.find(t => t.id === parseInt(d.tp));
+                                    const attObj = {
+                                        id: `${ev.id}-d${idx}`,
+                                        parentEvId: ev.id,
+                                        detailIndex: idx,
+                                        instanceNumber: instNum,
+                                        date: evDate,
+                                        duration: ev.duration || null,
+                                        tp: d.tp,
+                                        tpName: tpFound ? `TP Nº ${d.tp}: ${tpFound.name}` : `TP Nº ${d.tp}`,
+                                        questionText: d.text,
+                                        grade: d.label || (d.score === 1.0 ? 'Bien' : d.score === 0.5 ? 'Regular' : 'Mal'),
+                                        points: pts
+                                    };
+                                    currentInst.attempts.push(attObj);
+                                    allAttempts.push(attObj);
+                                });
+                            } else if (ev.questionText) {
+                                const pts = getPointsFromGrade(ev.grade, ev.score);
+                                const tpFound = tps.value.find(t => t.id === parseInt(ev.tpNum));
+                                const attObj = {
+                                    id: ev.id,
+                                    parentEvId: ev.id,
+                                    detailIndex: null,
+                                    instanceNumber: instNum,
+                                    date: evDate,
+                                    duration: ev.duration || null,
+                                    tp: ev.tpNum || 1,
+                                    tpName: tpFound ? `TP Nº ${ev.tpNum}: ${tpFound.name}` : `TP Nº ${ev.tpNum || 1}`,
+                                    questionText: ev.questionText,
+                                    grade: ev.grade || 'Bien',
+                                    points: pts
+                                };
+                                currentInst.attempts.push(attObj);
+                                allAttempts.push(attObj);
+                            }
+
+                            if (sState === 'Final' || sState === 'Agotado') {
+                                instances.push(currentInst);
+                                currentInst = {
+                                    number: instances.length + 1,
+                                    sessions: [],
+                                    attempts: [],
+                                    state: 'Abierto',
+                                    latestDate: null,
+                                    latestDuration: null
+                                };
+                            }
+                        });
+
+                        if (currentInst.sessions.length > 0) {
+                            instances.push(currentInst);
+                        }
+
+                        // Compute stats per instance
+                        instances.forEach((inst, idx) => {
+                            let iSum = 0;
+                            inst.attempts.forEach(a => { iSum += a.points; });
+                            inst.avgGrade = inst.attempts.length > 0 ? parseFloat((iSum / inst.attempts.length).toFixed(1)) : 0;
+                            inst.isActive = (idx === instances.length - 1);
+                        });
+
+                        const activeInstance = instances.length > 0 ? instances[instances.length - 1] : null;
+                        const activeAttempts = activeInstance ? activeInstance.attempts : [];
+                        const activeInstanceNumber = activeInstance ? activeInstance.number : 1;
+
+                        allAttempts.forEach(a => {
+                            a.isActiveInstance = (a.instanceNumber === activeInstanceNumber);
+                        });
+
                         let bien = 0, regular = 0, mal = 0, sumPts = 0;
-                        st.attempts.forEach(att => {
+                        activeAttempts.forEach(att => {
                             sumPts += att.points;
                             if (att.points === 10) bien++;
                             else if (att.points === 6) regular++;
                             else mal++;
                         });
 
-                        const count = st.attempts.length;
+                        const count = activeAttempts.length;
                         const avgGrade = count > 0 ? parseFloat((sumPts / count).toFixed(1)) : 0;
                         const calificacionStr = getCalificacionText(avgGrade, count);
                         const roundedGrade = count > 0 ? Math.round(avgGrade) : 0;
+                        const latestDate = activeInstance ? activeInstance.latestDate : null;
+                        const latestDuration = activeInstance ? activeInstance.latestDuration : null;
+                        const effectiveState = activeInstance ? activeInstance.state : (st.closureState || 'Abierto');
+                        const isProvisional = !st.isFixed && count > 0 && (effectiveState === 'Abierto' || effectiveState === 'Parcial');
 
                         return {
                             ...st,
+                            closureState: effectiveState,
+                            instances,
+                            activeInstanceNumber,
+                            isProvisional,
+                            attempts: activeAttempts,
+                            allAttempts,
+                            latestDate,
+                            latestDuration,
                             evalCount: count,
                             bienCount: bien,
                             regularCount: regular,
@@ -2676,9 +2837,122 @@
                     const st = students.value.find(s => s.id === studentId);
                     if (st) {
                         st.closureState = newState;
+                        if (newState === 'Agotado') {
+                            st.isFixed = true;
+                        }
+                        // Sincronizar el estado de la última sesión evaluativa del alumno para reflejar el cierre de instancia
+                        const stEvals = evaluations.value
+                            .filter(e => e.studentId === studentId)
+                            .sort((a, b) => new Date(a.date || a.timestamp || 0) - new Date(b.date || b.timestamp || 0));
+                        if (stEvals.length > 0) {
+                            stEvals[stEvals.length - 1].sessionState = newState;
+                        }
                         safeSetStorage('eval_students', students.value);
+                        safeSetStorage('eval_evaluations', evaluations.value);
                         showToast(`Cierre de etapa actualizado a: ${newState}`, "success");
                     }
+                }
+
+                function unlockStudentClosure(studentId) {
+                    const st = students.value.find(s => s.id === studentId);
+                    if (st) {
+                        st.isFixed = false;
+                        if (st.closureState === 'Agotado') {
+                            st.closureState = 'Final';
+                            const stEvals = evaluations.value
+                                .filter(e => e.studentId === studentId)
+                                .sort((a, b) => new Date(a.date || a.timestamp || 0) - new Date(b.date || b.timestamp || 0));
+                            if (stEvals.length > 0) {
+                                stEvals[stEvals.length - 1].sessionState = 'Final';
+                            }
+                            safeSetStorage('eval_evaluations', evaluations.value);
+                        }
+                        safeSetStorage('eval_students', students.value);
+                        showToast(`Estado destrabado para ${st.name}. Puede rendir una nueva instancia.`, "info");
+                    }
+                }
+
+                function applyFixClosureToStudents(targetIds) {
+                    let countFixed = 0;
+                    targetIds.forEach(stId => {
+                        const st = students.value.find(s => s.id === stId);
+                        if (!st || st.isFixed) return;
+
+                        const stEvals = evaluations.value
+                            .filter(e => e.studentId === stId)
+                            .sort((a, b) => new Date(a.date || a.timestamp || 0) - new Date(b.date || b.timestamp || 0));
+
+                        if (stEvals.length > 0) {
+                            const lastEv = stEvals[stEvals.length - 1];
+                            const curState = lastEv.sessionState || st.closureState || 'Abierto';
+                            if (curState === 'Abierto' || curState === 'Parcial') {
+                                lastEv.sessionState = 'Final';
+                            }
+                            st.closureState = lastEv.sessionState || 'Final';
+                        } else {
+                            st.closureState = 'Final';
+                        }
+
+                        st.isFixed = true;
+                        countFixed++;
+                    });
+
+                    safeSetStorage('eval_students', students.value);
+                    safeSetStorage('eval_evaluations', evaluations.value);
+                    showToast(`Cierre fijado definitivamente para ${countFixed} alumno(s).`, "success");
+                }
+
+                function confirmFixClosure(scope, studentId = null) {
+                    let targets = [];
+                    let scopeLabel = '';
+
+                    if (scope === 'student' && studentId) {
+                        targets = groupedEvaluations.value.filter(s => s.studentId === studentId && !s.isFixed);
+                        scopeLabel = targets.length > 0 ? targets[0].studentName : 'el alumno';
+                    } else if (scope === 'course') {
+                        if (!historyFilterCourse.value) return;
+                        targets = groupedEvaluations.value.filter(s => s.course === historyFilterCourse.value && !s.isFixed);
+                        scopeLabel = `el curso ${historyFilterCourse.value}`;
+                    } else {
+                        targets = groupedEvaluations.value.filter(s => !s.isFixed);
+                        scopeLabel = 'toda la nómina';
+                    }
+
+                    if (targets.length === 0) {
+                        showToast("Todos los alumnos seleccionados ya tienen su estado fijado.", "info");
+                        return;
+                    }
+
+                    let aprobados = 0;
+                    let enProceso = 0;
+                    let parcialesACerrar = 0;
+                    let sinEvaluar = 0;
+
+                    targets.forEach(st => {
+                        if (st.evalCount === 0) {
+                            sinEvaluar++;
+                        } else {
+                            if (st.closureState === 'Abierto' || st.closureState === 'Parcial') {
+                                parcialesACerrar++;
+                            }
+                            if (Math.round(st.avgGrade) >= 6) aprobados++;
+                            else enProceso++;
+                        }
+                    });
+
+                    const targetIds = targets.map(t => t.studentId);
+                    const msg = `Se fijará el cierre definitivo para ${targets.length} alumno(s) de ${scopeLabel}:\n` +
+                        `• ${aprobados} aprobado(s) (Suficiente / Avanzado)\n` +
+                        `• ${enProceso} en proceso (quedan firmes con su nota actual)\n` +
+                        `• ${parcialesACerrar} sesión(es) abierta(s)/parcial(es) pasarán a FINAL\n` +
+                        `• ${sinEvaluar} sin evaluar`;
+
+                    openConfirmModal(
+                        `¿Fijar Cierre Definitivo (${scopeLabel})?`,
+                        msg,
+                        () => applyFixClosureToStudents(targetIds),
+                        { variant: 'brand', confirmText: 'Confirmar y Fijar Estado' }
+                    );
                 }
 
                 function startExamForStudent(st) {
@@ -2699,8 +2973,8 @@
                         if (st.questionHistory[key]) count = st.questionHistory[key].length;
                     }
                     const summary = groupedEvaluations.value.find(s => s.studentId === studentId);
-                    if (summary) {
-                        const tpAttempts = summary.attempts.filter(a => parseInt(a.tp) === tpId);
+                    if (summary && Array.isArray(summary.allAttempts)) {
+                        const tpAttempts = summary.allAttempts.filter(a => parseInt(a.tp) === tpId);
                         if (tpAttempts.length > count) count = tpAttempts.length;
                     }
                     return { evaluated: count > 0, count };
@@ -2856,6 +3130,7 @@
 
                 function openFinishRoundModal() {
                     finishNotes.value = '';
+                    finishSessionState.value = 'Final';
                     showFinishModal.value = true;
                 }
 
@@ -2865,6 +3140,7 @@
                     pauseEvalTimer();
                     const durationStr = formatMMSS(evalTimerElapsed.value);
                     const summary = finishSummary.value;
+                    const chosenState = finishSessionState.value || 'Final';
 
                     const newEv = {
                         id: 'ev-' + Date.now(),
@@ -2874,6 +3150,7 @@
                         group: currentStudent.value.group,
                         date: new Date().toISOString(),
                         duration: durationStr,
+                        sessionState: chosenState,
                         totalQuestions: summary.totalQuestions,
                         totalPoints: summary.totalPoints,
                         grade10: summary.grade10,
@@ -2885,6 +3162,12 @@
                     };
 
                     evaluations.value.push(newEv);
+
+                    // Actualizar estado del alumno según el cierre de esta sesión
+                    currentStudent.value.closureState = chosenState;
+                    currentStudent.value.isFixed = (chosenState === 'Agotado');
+                    safeSetStorage('eval_students', students.value);
+
                     showFinishModal.value = false;
                     activeRound.value.questions = [];
                     resetEvalTimer();
@@ -3476,11 +3759,20 @@
                     show: false,
                     title: '',
                     message: '',
-                    action: null
+                    action: null,
+                    variant: 'danger',
+                    confirmText: 'Sí, Eliminar Datos'
                 });
 
-                function openConfirmModal(title, message, action) {
-                    confirmModal.value = { show: true, title, message, action };
+                function openConfirmModal(title, message, action, opts = {}) {
+                    confirmModal.value = {
+                        show: true,
+                        title,
+                        message,
+                        action,
+                        variant: opts.variant || 'danger',
+                        confirmText: opts.confirmText || 'Sí, Eliminar Datos'
+                    };
                 }
 
                 function executeConfirmAction() {
@@ -3542,7 +3834,11 @@
                     resetEvalTimer();
                     
                     if (Array.isArray(students.value)) {
-                        students.value.forEach(s => { s.questionHistory = {}; });
+                        students.value.forEach(s => {
+                            s.questionHistory = {};
+                            s.closureState = 'Abierto';
+                            s.isFixed = false;
+                        });
                     }
                     
                     try { localStorage.removeItem('eval_evaluations'); } catch(e){}
@@ -3645,6 +3941,7 @@
                     activeRound,
                     showFinishModal,
                     finishNotes,
+                    finishSessionState,
                     confirmModal,
                     executeConfirmAction,
                     historyFilterSearch,
@@ -3720,6 +4017,8 @@
                     toggleExpandStudent,
                     isExpanded,
                     updateStudentClosureState,
+                    unlockStudentClosure,
+                    confirmFixClosure,
                     startExamForStudent,
                     getStudentTpStatus,
                     deleteSpecificAttempt,
