@@ -79,6 +79,7 @@
                             <div>
                                 <h1 class="font-extrabold text-lg leading-tight tracking-wide text-white">{{ appTitle }}</h1>
                                 <p class="text-xs text-slate-400 font-medium">{{ appSubtitle }}</p>
+                                <span class="block text-[10px] font-mono text-slate-400/80 tracking-wider mt-0.5">Versión {{ appVersion }}</span>
                             </div>
                         </div>
 
@@ -1084,10 +1085,10 @@
                 </div>
 
                 <!-- GRILLA DE GRÁFICOS (5 VISUALIZACIONES) -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     <!-- Chart 1: Calificaciones Conceptuales (Doughnut) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
                                 <i class="fa-solid fa-chart-pie text-brand-500"></i>
@@ -1100,7 +1101,7 @@
                     </div>
 
                     <!-- Chart 2: Estado Cierre de Etapa (Donut) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
                                 <i class="fa-solid fa-circle-notch text-brand-500"></i>
@@ -1113,33 +1114,36 @@
                     </div>
 
                     <!-- Chart 3: Distribución de Notas Promedio 1 a 10 (Bar) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col space-y-3 lg:col-span-4">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
                                 <i class="fa-solid fa-chart-simple text-brand-500"></i>
-                                <span>3. Distribución de Notas Promedio (1 a 10)</span>
+                                <span>3. Distribución de Notas (1 a 10)</span>
                             </h3>
                         </div>
-                        <div class="h-64 relative">
+                        <div class="flex-1 min-h-[16rem] relative">
                             <canvas id="chartNotasCanvas"></canvas>
                         </div>
                     </div>
 
-                    <!-- Chart 4: % Acierto por TP (Horizontal Bar) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <!-- Chart 4: Volumen Evaluado, Acierto y Fallas por TP Habilitado (Horizontal Stacked Bar) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-8">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
                             <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
                                 <i class="fa-solid fa-list-check text-brand-500"></i>
-                                <span>4. % de Acierto por Trabajo Práctico Habilitado</span>
+                                <span>4. Volumen Evaluado, Acierto y Fallas por TP Habilitado</span>
                             </h3>
+                            <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
+                                Largo proporcional a cant. evaluada (N)
+                            </span>
                         </div>
-                        <div class="h-64 relative">
+                        <div class="relative" :style="{ height: Math.max(264, enabledTps.length * 40 + 56) + 'px' }">
                             <canvas id="chartTpsCanvas"></canvas>
                         </div>
                     </div>
 
                     <!-- Chart 5: Desglose de Respuestas Bien/Reg/Mal (Stacked Bar) -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-2">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 lg:col-span-12">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2">
                                 <i class="fa-solid fa-chart-column text-brand-500"></i>
@@ -2040,6 +2044,7 @@
 
                 const appTitle = ref(localStorage.getItem('eval_appTitle') || 'Evaluador');
                 const appSubtitle = ref(localStorage.getItem('eval_appSubtitle') || 'Laboratorio de Física');
+                const appVersion = '26.11.13.0001';
 
                 watch(appTitle, val => localStorage.setItem('eval_appTitle', val));
                 watch(appSubtitle, val => localStorage.setItem('eval_appSubtitle', val));
@@ -2779,22 +2784,86 @@
                         });
                     }
 
-                    const tpLabels = tpStatistics.value.map(t => `TP ${t.id}`);
-                    const tpRates = tpStatistics.value.map(t => {
-                        let sumPts = 0, count = 0;
+                    const tpBreakdown = tpStatistics.value.map(t => {
+                        let bien = 0, regular = 0, mal = 0, sumPts = 0;
                         evaluations.value.forEach(ev => {
                             if (!studentById.has(ev.studentId)) return;
                             if (Array.isArray(ev.details)) {
                                 ev.details.forEach(d => {
                                     if (parseInt(d.tp) === t.id) {
-                                        sumPts += getPointsFromGrade(d.label, d.score);
-                                        count++;
+                                        const pts = getPointsFromGrade(d.label, d.score);
+                                        sumPts += pts;
+                                        if (pts === 10) bien++;
+                                        else if (pts === 6) regular++;
+                                        else mal++;
                                     }
                                 });
+                            } else if (ev.questionText && parseInt(ev.tpNum || 1) === t.id) {
+                                const pts = getPointsFromGrade(ev.grade, ev.score);
+                                sumPts += pts;
+                                if (pts === 10) bien++;
+                                else if (pts === 6) regular++;
+                                else mal++;
                             }
                         });
-                        return count > 0 ? Math.round((sumPts / (count * 10)) * 100) : 0;
+                        const total = bien + regular + mal;
+                        const pctAcierto = total > 0 ? Math.round((sumPts / (total * 10)) * 100) : 0;
+                        const shortName = t.name && t.name.length > 26 ? `${t.name.slice(0, 25)}…` : (t.name || '');
+                        return {
+                            tpId: t.id,
+                            tpName: t.name || `TP ${t.id}`,
+                            label: shortName ? `TP ${t.id}: ${shortName}` : `TP ${t.id}`,
+                            bien,
+                            regular,
+                            mal,
+                            total,
+                            pctAcierto
+                        };
                     });
+
+                    const hasTpsData = tpBreakdown.length > 0;
+                    const tpLabels = hasTpsData ? tpBreakdown.map(item => item.label) : ['Sin TPs habilitados'];
+                    const tpBienData = hasTpsData ? tpBreakdown.map(item => item.bien) : [0];
+                    const tpRegularData = hasTpsData ? tpBreakdown.map(item => item.regular) : [0];
+                    const tpMalData = hasTpsData ? tpBreakdown.map(item => item.mal) : [0];
+
+                    const tpBarEndLabelsPlugin = {
+                        id: 'tpBarEndLabels',
+                        afterDatasetsDraw(chart) {
+                            if (!hasTpsData) return;
+                            const { ctx, scales: { x, y } } = chart;
+                            if (!x || !y) return;
+                            ctx.save();
+                            ctx.textBaseline = 'middle';
+
+                            tpBreakdown.forEach((item, idx) => {
+                                let visibleTotal = 0;
+                                chart.data.datasets.forEach((ds, dsIdx) => {
+                                    if (chart.isDatasetVisible(dsIdx)) {
+                                        visibleTotal += Number(ds.data[idx] || 0);
+                                    }
+                                });
+                                const xPos = x.getPixelForValue(visibleTotal) + 8;
+                                const yPos = y.getPixelForValue(idx);
+
+                                if (item.total === 0) {
+                                    ctx.font = 'italic 11px Inter, sans-serif';
+                                    ctx.fillStyle = '#94a3b8';
+                                    ctx.fillText('0 eval.', xPos, yPos);
+                                } else {
+                                    const mainText = `${item.total} eval · ${item.pctAcierto}% acierto · `;
+                                    const failText = `${item.mal} ${item.mal === 1 ? 'falla' : 'fallas'}`;
+                                    ctx.font = 'bold 11px Inter, sans-serif';
+                                    ctx.fillStyle = '#334155';
+                                    ctx.fillText(mainText, xPos, yPos);
+                                    const mainWidth = ctx.measureText(mainText).width;
+                                    ctx.fillStyle = item.mal > 0 ? '#e11d48' : '#64748b';
+                                    ctx.fillText(failText, xPos + mainWidth, yPos);
+                                }
+                            });
+                            ctx.restore();
+                        }
+                    };
 
                     const ctx4 = document.getElementById('chartTpsCanvas');
                     if (ctx4) {
@@ -2802,20 +2871,83 @@
                         chartTpsInstance = new Chart(ctx4, {
                             type: 'bar',
                             data: {
-                                labels: tpLabels.length > 0 ? tpLabels : ['Sin TPs'],
-                                datasets: [{
-                                    label: '% Acierto',
-                                    data: tpRates.length > 0 ? tpRates : [0],
-                                    backgroundColor: '#0284c7',
-                                    borderRadius: 6
-                                }]
+                                labels: tpLabels,
+                                datasets: [
+                                    {
+                                        label: 'Bien (10pt)',
+                                        data: tpBienData,
+                                        backgroundColor: '#10b981',
+                                        borderRadius: 4
+                                    },
+                                    {
+                                        label: 'Regular (6pt)',
+                                        data: tpRegularData,
+                                        backgroundColor: '#f59e0b',
+                                        borderRadius: 2
+                                    },
+                                    {
+                                        label: 'Fallas / Mal (1pt)',
+                                        data: tpMalData,
+                                        backgroundColor: '#f43f5e',
+                                        borderRadius: 4
+                                    }
+                                ]
                             },
+                            plugins: [tpBarEndLabelsPlugin],
                             options: {
                                 indexAxis: 'y',
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: { x: { min: 0, max: 100 } }
+                                layout: {
+                                    padding: { right: 175 }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: { font: { size: 11 } }
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title(items) {
+                                                if (!items.length || !hasTpsData) return '';
+                                                const item = tpBreakdown[items[0].dataIndex];
+                                                return `TP ${item.tpId}: ${item.tpName}`;
+                                            },
+                                            afterBody(items) {
+                                                if (!items.length || !hasTpsData) return [];
+                                                const item = tpBreakdown[items[0].dataIndex];
+                                                return [
+                                                    `Total evaluadas: ${item.total}`,
+                                                    `% Acierto ponderado: ${item.pctAcierto}%`,
+                                                    `Fallas (Mal 1pt): ${item.mal}`
+                                                ];
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        stacked: true,
+                                        beginAtZero: true,
+                                        ticks: {
+                                            stepSize: 1,
+                                            precision: 0
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Cantidad de preguntas evaluadas (N)',
+                                            font: { size: 11, weight: 'bold' },
+                                            color: '#64748b'
+                                        }
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        ticks: {
+                                            font: { size: 11, weight: '600' },
+                                            color: '#334155'
+                                        }
+                                    }
+                                }
                             }
                         });
                     }
@@ -4098,6 +4230,7 @@
                     activeTab,
                     appTitle,
                     appSubtitle,
+                    appVersion,
                     totalRecordsSaved,
                     courses,
                     groups,
